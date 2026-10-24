@@ -34,41 +34,43 @@ st.sidebar.markdown("Use the menu on the left to navigate between pages")
 if True:  # Always show dashboard on main page
     st.title("📊 Portfolio Dashboard")
     
-    # Get current portfolio
     portfolio = get_current_portfolio()
     transactions = get_transactions()
-    
-    # Current prices
-    btc_price = get_current_price("BTC/USDT")
-    eth_price = get_current_price("ETH/USDT")
-    
-    # Portfolio value
-    portfolio_value = (
-        portfolio['BTC'] * (btc_price or 0) +
-        portfolio['ETH'] * (eth_price or 0) +
-        portfolio['USDT']
-    )
-    
-    # Display portfolio
+
+    # Build list of crypto assets (exclude USDT for price fetch)
+    crypto_assets = [a for a in portfolio.keys() if a != 'USDT']
+    prices = {}
+    for asset in crypto_assets:
+        prices[asset] = get_current_price(f"{asset}/USDT")
+
+    portfolio_value = portfolio.get('USDT', 0.0)
+    for asset in crypto_assets:
+        qty = portfolio.get(asset, 0.0)
+        p = prices.get(asset)
+        if p:
+            portfolio_value += qty * p
+
     st.subheader("Current Portfolio")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("BTC", f"{portfolio['BTC']:.3f}", f"${btc_price:,.2f}" if btc_price else "")
-        if btc_price:
-            st.metric("BTC Value", f"${portfolio['BTC'] * btc_price:,.2f}")
-    
-    with col2:
-        st.metric("ETH", f"{portfolio['ETH']:.3f}", f"${eth_price:,.2f}" if eth_price else "")
-        if eth_price:
-            st.metric("ETH Value", f"${portfolio['ETH'] * eth_price:,.2f}")
-    
-    with col3:
-        st.metric("USDT", f"{portfolio['USDT']:,.2f}")
-    
-    with col4:
-        st.metric("Total Value", f"${portfolio_value:,.2f}")
+
+    # Show metrics: up to 4 per row, then new row
+    cols_per_row = 4
+    assets_sorted = sorted(portfolio.keys(), key=lambda a: (0 if a == 'USDT' else 1, a))
+    for i in range(0, len(assets_sorted), cols_per_row):
+        row_assets = assets_sorted[i : i + cols_per_row]
+        cols = st.columns(len(row_assets))
+        for col, asset in zip(cols, row_assets):
+            with col:
+                qty = portfolio[asset]
+                if asset == 'USDT':
+                    st.metric(asset, f"{qty:,.2f}")
+                else:
+                    price = prices.get(asset)
+                    price_str = f"${price:,.2f}" if price else "—"
+                    st.metric(asset, f"{qty:.4f}", price_str)
+                    if price and qty > 0:
+                        st.metric(f"{asset} Value", f"${qty * price:,.2f}")
+
+    st.metric("Total Value", f"${portfolio_value:,.2f}")
     
     # Quick stats
     if len(transactions) > 0:

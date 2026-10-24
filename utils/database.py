@@ -256,64 +256,61 @@ def get_portfolio_snapshots() -> pd.DataFrame:
 
 
 def get_current_portfolio() -> Dict[str, float]:
-    """Get current portfolio state from transactions"""
+    """Get current portfolio state from transactions (all assets from transactions + USDT)"""
     transactions = get_transactions()
-    
-    # Sort by date to process chronologically
+    if len(transactions) == 0:
+        return {'USDT': 0.0}
+
     transactions = transactions.sort_values('date')
-    
-    portfolio = {'BTC': 0.0, 'ETH': 0.0, 'USDT': 0.0}
-    
+    # Build portfolio dynamically: ensure USDT exists, add any asset from transactions
+    portfolio = {'USDT': 0.0}
+
     for _, row in transactions.iterrows():
         asset = row['asset']
         transaction_type = row['type']
         quantity = row['quantity']
         value = row['value']  # Value in USDT
-        
-        if asset in portfolio:
-            if transaction_type == 'buy':
-                portfolio[asset] += quantity
-                # When buying crypto, reduce USDT only if we have enough
-                # If not enough, consider it bought with external funds
-                if asset != 'USDT':
-                    if portfolio['USDT'] >= value:
-                        portfolio['USDT'] -= value
-                    # If not enough USDT, don't go negative (external funding)
-                # When buying USDT, it's already added above
-            elif transaction_type == 'sell':
-                portfolio[asset] -= quantity
-                # When selling crypto, add USDT
-                if asset != 'USDT':
-                    portfolio['USDT'] += value
-                # When selling USDT, it's already subtracted above
-    
+
+        if asset not in portfolio:
+            portfolio[asset] = 0.0
+
+        if transaction_type == 'buy':
+            portfolio[asset] += quantity
+            if asset != 'USDT':
+                if portfolio['USDT'] >= value:
+                    portfolio['USDT'] -= value
+            # When buying USDT, quantity already added above
+        elif transaction_type == 'sell':
+            portfolio[asset] -= quantity
+            if asset != 'USDT':
+                portfolio['USDT'] += value
+
     return portfolio
 
 
 def get_portfolio_at_date(date: str) -> Dict[str, float]:
     """
-    Get portfolio state at a specific date
+    Get portfolio state at a specific date (all assets from transactions + USDT)
     Args:
         date: Date string in format 'YYYY-MM-DD'
     Returns:
         Dictionary with portfolio quantities
     """
     transactions = get_transactions()
-    
-    portfolio = {'BTC': 0.0, 'ETH': 0.0, 'USDT': 0.0}
-    
-    # Filter transactions up to and including the date
     transactions_before = transactions[transactions['date'] <= date]
-    
+    if len(transactions_before) == 0:
+        return {'USDT': 0.0}
+
+    portfolio = {'USDT': 0.0}
     for _, row in transactions_before.iterrows():
         asset = row['asset']
         transaction_type = row['type']
         quantity = row['quantity']
-        
-        if asset in portfolio:
-            if transaction_type == 'buy':
-                portfolio[asset] += quantity
-            elif transaction_type == 'sell':
-                portfolio[asset] -= quantity
-    
+        if asset not in portfolio:
+            portfolio[asset] = 0.0
+        if transaction_type == 'buy':
+            portfolio[asset] += quantity
+        elif transaction_type == 'sell':
+            portfolio[asset] -= quantity
+
     return portfolio
