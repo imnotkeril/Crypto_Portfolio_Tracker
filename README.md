@@ -22,7 +22,7 @@ pip install -r requirements.txt
 Or install manually:
 
 ```bash
-pip install streamlit pandas numpy plotly ccxt python-dateutil
+pip install streamlit pandas numpy plotly ccxt python-dateutil requests statsmodels
 ```
 
 **Important:** If you're using a virtual environment, make sure it's activated before installing dependencies and running the application.
@@ -55,10 +55,16 @@ Crypto_portfolio/
 │   ├── transactions.py     # Transaction management
 │   ├── funding.py         # Coin-M funding tracking
 │   ├── pools.py           # USDT pool tracking
-│   └── analytics.py       # Performance analytics
+│   ├── analytics.py       # Performance analytics
+│   ├── backtest.py        # Funding-arb / alt market-neutral backtests
+│   └── guide.py           # Backtest guide (static text)
 ├── utils/                  # Utility modules
 │   ├── database.py        # SQLite database operations
 │   ├── price_fetcher.py   # Price fetching from Binance API
+│   ├── assets.py          # Binance USDT asset list (cached)
+│   ├── backtest_data.py   # Backtest data loaders (Binance or synthetic)
+│   ├── backtest_funding_arb.py  # Funding-arb strategy
+│   ├── backtest_alt_mn.py       # Alt market-neutral strategy
 │   ├── portfolio_calculator.py  # Portfolio value calculation
 │   └── metrics.py         # Performance metrics calculation
 ├── scripts/                # Helper scripts
@@ -115,6 +121,8 @@ Price data is fetched from Binance API via the `ccxt` library. Historical prices
 - plotly >= 5.17.0
 - ccxt >= 4.0.0
 - python-dateutil >= 2.8.2
+- requests >= 2.28.0
+- statsmodels >= 0.14.0
 
 ## License
 
