@@ -18,6 +18,16 @@ st.set_page_config(page_title="Backtest", page_icon="📈", layout="wide")
 st.title("📈 Backtest: Funding Arb & Alt Market-Neutral")
 st.markdown("Запуск бэктестов двух стратегий из гайда. Настройте параметры и нажмите **Запустить**.")
 
+
+def show_data_source(frame: pd.DataFrame) -> None:
+    """Make the data origin explicit: synthetic or partially assumed data must never look real."""
+    notes = frame.attrs.get("notes", [])
+    if frame.attrs.get("synthetic"):
+        st.warning("⚠️ SYNTHETIC / ASSUMED DATA — results are NOT a real backtest. " + " ".join(notes))
+    else:
+        st.caption("Data source: Binance (real historical data).")
+
+
 tab1, tab2, tab3 = st.tabs(["Funding Rate Arb", "Alt Market-Neutral", "Справка"])
 
 with tab1:
@@ -66,6 +76,7 @@ with tab1:
                         slippage_pct=slippage_fa,
                     )
                     st.success("Бэктест выполнен.")
+                    show_data_source(df)
 
                     st.subheader("Результаты")
                     m1, m2, m3, m4, m5 = st.columns(5)
@@ -148,6 +159,7 @@ with tab2:
                         beta_window=int(beta_window),
                     )
                     st.success("Бэктест выполнен.")
+                    show_data_source(prices)
 
                     st.subheader("Результаты")
                     m1, m2, m3, m4, m5 = st.columns(5)

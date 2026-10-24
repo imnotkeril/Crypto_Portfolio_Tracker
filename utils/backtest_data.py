@@ -28,6 +28,13 @@ def _binance_futures():
     })
 
 
+def _flag(df: pd.DataFrame, synthetic: bool, notes: Optional[List[str]] = None) -> pd.DataFrame:
+    """Mark a loaded frame: attrs['synthetic'] (any made-up data) and attrs['notes'] (why)."""
+    df.attrs['synthetic'] = bool(synthetic)
+    df.attrs['notes'] = list(notes or [])
+    return df
+
+
 def load_funding_arb_data(
     symbol: str = "BTC",
     start_date: str = "2024-01-01",
@@ -44,7 +51,7 @@ def load_funding_arb_data(
         return pd.DataFrame()
 
     if use_synthetic:
-        return _synthetic_funding_arb_data(start, end)
+        return _flag(_synthetic_funding_arb_data(start, end), True, ["Synthetic data requested by user."])
 
     spot_symbol = f"{symbol}/USDT"
     perp_symbol = f"{symbol}/USDT:USDT"  # ccxt futures
@@ -53,7 +60,8 @@ def load_funding_arb_data(
     from utils.price_fetcher import get_price_range
     spot_df = get_price_range(spot_symbol, start_date, end_date)
     if spot_df is None or len(spot_df) == 0:
-        return _synthetic_funding_arb_data(start, end)
+        return _flag(_synthetic_funding_arb_data(start, end), True,
+                     ["Spot prices unavailable (Binance) - ENTIRE dataset is synthetic."])
     spot_df = spot_df.rename(columns={"date": "date", "price": "spot"})
     spot_df["date"] = pd.to_datetime(spot_df["date"]).dt.strftime("%Y-%m-%d")
 
@@ -73,15 +81,18 @@ def load_funding_arb_data(
                 all_ohlcv.append({"ts": c[0], "close": c[4]})
             since_ms = ohlcv[-1][0] + 86400_000
         if not all_ohlcv:
-            return _synthetic_funding_arb_data(start, end)
+            return _flag(_synthetic_funding_arb_data(start, end), True,
+                         ["Perp prices unavailable (Binance futures) - ENTIRE dataset is synthetic."])
         perp_df = pd.DataFrame(all_ohlcv)
         perp_df["date"] = pd.to_datetime(perp_df["ts"], unit="ms").dt.strftime("%Y-%m-%d")
         perp_df = perp_df.groupby("date", as_index=False)["close"].last()
         perp_df = perp_df.rename(columns={"close": "perp"})
-    except Exception:
-        return _synthetic_funding_arb_data(start, end)
+    except Exception as exc:
+        return _flag(_synthetic_funding_arb_data(start, end), True,
+                     [f"Perp prices failed ({type(exc).__name__}) - ENTIRE dataset is synthetic."])
 
     # 3) Funding rate history from Binance
+    notes: List[str] = []
     try:
         # Binance: GET /fapi/v1/fundingRate
         import requests
@@ -99,8 +110,9 @@ def load_funding_arb_data(
         # Daily average funding rate (3 points per day for 8h)
         fund_daily = fund_df.groupby("date")["fundingRate"].mean().reset_index()
         fund_daily = fund_daily.rename(columns={"fundingRate": "funding_8h"})
-    except Exception:
-        # Synthetic funding: small positive rate
+    except Exception as exc:
+        # Constant funding assumption - flagged, never silent
+        notes.append(f"Funding history unavailable ({type(exc).__name__}): constant funding_8h=0.0001 assumed.")
         fund_daily = spot_df[["date"]].copy()
         fund_daily["funding_8h"] = 0.0001
 
@@ -110,7 +122,7 @@ def load_funding_arb_data(
     df["funding_8h"] = df["funding_8h"].ffill().fillna(0.0001)
     df["is_funding_time"] = True  # apply once per day
     df = df.dropna(subset=["spot", "perp"])
-    return df
+    return _flag(df, bool(notes), notes)
 
 
 def _synthetic_funding_arb_data(start: datetime, end: datetime) -> pd.DataFrame:
@@ -148,7 +160,7 @@ def load_alt_mn_data(
         return pd.DataFrame()
 
     if use_synthetic:
-        return _synthetic_alt_mn_data(symbols, start, end)
+        return _flag(_synthetic_alt_mn_data(symbols, start, end), True, ["Synthetic data requested by user."])
 
     from utils.price_fetcher import get_price_range
     all_dfs = []
@@ -159,14 +171,16 @@ def load_alt_mn_data(
             df = df.rename(columns={"date": "date", "price": sym})
             all_dfs.append(df)
     if not all_dfs:
-        return _synthetic_alt_mn_data(symbols, start, end)
+        return _flag(_synthetic_alt_mn_data(symbols, start, end), True,
+                     ["No prices from Binance - ENTIRE dataset is synthetic."])
 
     out = all_dfs[0]
     for df in all_dfs[1:]:
         out = out.merge(df, on="date", how="outer")
     out = out.sort_values("date").dropna(how="all", subset=[c for c in out.columns if c != "date"])
     out = out.set_index("date")
-    return out
+    missing = [x for x in symbols if x not in out.columns]
+    return _flag(out, False, [f"No data for: {', '.join(missing)}"] if missing else [])
 
 
 def _synthetic_alt_mn_data(symbols: List[str], start: datetime, end: datetime) -> pd.DataFrame:
