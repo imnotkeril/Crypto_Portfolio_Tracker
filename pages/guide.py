@@ -6,12 +6,10 @@ import streamlit as st
 
 st.set_page_config(page_title="Backtest Guide", page_icon="📖", layout="wide")
 
-st.image("https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png", width=200)
-
-st.title("ТЕПЕРЬ ГАЙД СДЕЛАЙ")
+st.title("📖 Backtest Guide: Funding Arb & Alt Market-Neutral")
 
 st.markdown("""
-Сделаем практический гайд «под продакшн» по двум стратегиям: funding arb и alt market-neutral. Структура: pipeline, что качать, где считать, как организовать код.
+Практический гайд «под продакшн» по двум стратегиям: funding arb и alt market-neutral. Структура: pipeline, что качать, где считать, как организовать код.
 
 ***
 """)
@@ -46,7 +44,7 @@ st.markdown("""
     - Taker fees, maker fees (фикс из fee schedule биржи)
 - **Perp:**
     - OHLCV
-    - Funding rate + время начисления (timestamp версии «payment time»)[^1]
+    - Funding rate + время начисления (timestamp версии «payment time»)
     - Maintenance margin, initial margin (из спецификации контракта)
 - **Дополнительно** (по возможности):
     - Bid/ask или хотя бы mid price вокруг funding timestamps
@@ -55,7 +53,7 @@ st.markdown("""
 **Источники:**
 
 - Биржевые API напрямую (через `ccxt`)
-- CoinGlass / др. агрегаторы для funding-history, если хочешь быстро и кросс-биржево[^2]
+- CoinGlass / др. агрегаторы для funding-history, если хочешь быстро и кросс-биржево
 
 **Практика:**
 Сделай отдельный модуль `data/`:
@@ -405,11 +403,9 @@ st.markdown("""
 """)
 
 st.markdown("---")
-st.caption("Если хочешь, следующий шаг можно сделать более прикладным: набросать конкретный skeleton кода под одну из стратегий (например, funding arb на Binance BTCUSDT) с учётом всего выше.")
-
-st.markdown("---")
 st.markdown("""
-[^1]: https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History
+**Sources**
 
-[^2]: https://www.coinglass.com/CryptoApi
+- [Binance: Get Funding Rate History](https://developers.binance.com/docs/derivatives/usds-margined-futures/market-data/rest-api/Get-Funding-Rate-History)
+- [CoinGlass API](https://www.coinglass.com/CryptoApi)
 """)
