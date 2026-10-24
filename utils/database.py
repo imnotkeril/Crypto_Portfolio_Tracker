@@ -5,7 +5,7 @@ Handles SQLite database operations
 import sqlite3
 import os
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Dict
 import pandas as pd
 
 

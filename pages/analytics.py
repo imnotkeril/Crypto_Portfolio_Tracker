@@ -8,16 +8,15 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-from datetime import datetime
 import sys
 import os
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.database import init_database, get_transactions
-from utils.portfolio_calculator import calculate_portfolio_history, get_transactions_with_prices
+from utils.portfolio_calculator import calculate_portfolio_history
 from utils.metrics import calculate_all_metrics
-from utils.price_fetcher import get_price_range, get_current_price
+from utils.price_fetcher import get_price_range
 
 
 st.set_page_config(page_title="Analytics", page_icon="📈", layout="wide")

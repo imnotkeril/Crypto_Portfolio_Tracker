@@ -5,7 +5,6 @@ Calculates portfolio performance metrics: returns, volatility, Sharpe, Sortino, 
 import pandas as pd
 import numpy as np
 from typing import Dict, Tuple
-from datetime import datetime
 
 
 def calculate_returns(portfolio_values: pd.Series) -> pd.Series:

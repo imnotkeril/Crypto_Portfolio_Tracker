@@ -7,13 +7,12 @@ import json
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple
 import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.database import get_transactions, get_funding_rates, get_pool_rates
-from utils.price_fetcher import get_price, get_price_range
+from utils.price_fetcher import get_price
 
 
 def calculate_portfolio_history(start_date: str = "2022-01-01", end_date: str = None) -> pd.DataFrame:

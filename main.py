@@ -2,8 +2,6 @@
 Main page - portfolio tracker dashboard
 """
 import streamlit as st
-import pandas as pd
-from datetime import datetime
 import sys
 import os
 

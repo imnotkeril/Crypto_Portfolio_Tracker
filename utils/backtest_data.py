@@ -4,7 +4,7 @@ Uses Binance via ccxt; fallback to synthetic data if API fails.
 """
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional
 import os
 import sys

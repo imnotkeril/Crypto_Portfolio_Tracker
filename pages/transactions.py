@@ -11,7 +11,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.database import init_database, add_transaction, get_transactions, delete_transaction, get_current_portfolio
 from utils.price_fetcher import get_price, get_current_price, find_dates_by_price
-from utils.assets import get_available_assets, get_assets_for_funding
+from utils.assets import get_available_assets
 
 
 st.set_page_config(page_title="Transactions", page_icon="📊", layout="wide")
@@ -363,7 +363,6 @@ with st.expander("➕ Add Transaction", expanded=len(transactions_df) == 0):
             
         except Exception as e:
             st.error(f"Error adding transaction: {e}")
-            import traceback
             st.exception(e)
 
 # Display current portfolio

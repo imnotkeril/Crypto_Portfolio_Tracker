@@ -8,12 +8,6 @@ from utils import portfolio_calculator as pc
 def const_price(monkeypatch):
     monkeypatch.setattr(pc, "get_price", lambda asset, date: 100.0)
 
-    def fake_range(symbol, start, end):
-        d = pd.date_range(start, end, freq="D").strftime("%Y-%m-%d")
-        return pd.DataFrame({"date": d, "price": 100.0})
-
-    monkeypatch.setattr(pc, "get_price_range", fake_range)
-
 
 @pytest.fixture
 def calc(db, monkeypatch):
