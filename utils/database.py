@@ -18,6 +18,46 @@ def get_connection():
     return sqlite3.connect(DB_PATH)
 
 
+def _drop_legacy_amount_column(conn, table: str, new_cols: str, create_new_sql: str, select_cols: str):
+    """
+    Migrate a legacy table that still has an 'amount' column to the new structure.
+    Safe: backs up the DB file first, runs in one transaction, and aborts (rolls back,
+    old table kept) if any row would be lost. Errors are raised, never swallowed.
+    """
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
+    if not cur.fetchone():
+        return
+    cur.execute(f"PRAGMA table_info({table})")
+    if 'amount' not in [col[1] for col in cur.fetchall()]:
+        return
+
+    backup_path = f"{DB_PATH}.pre-migration-{datetime.now():%Y%m%d%H%M%S}.bak"
+    backup = sqlite3.connect(backup_path)
+    try:
+        conn.backup(backup)
+    finally:
+        backup.close()
+
+    new_table = f"{table}_new"
+    try:
+        cur.execute("BEGIN")
+        cur.execute(f"DROP TABLE IF EXISTS {new_table}")
+        cur.execute(create_new_sql)
+        cur.execute(f"INSERT OR IGNORE INTO {new_table} ({new_cols}) "
+                    f"SELECT {select_cols} FROM {table}")
+        old_n = cur.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        new_n = cur.execute(f"SELECT COUNT(*) FROM {new_table}").fetchone()[0]
+        if new_n != old_n:
+            raise RuntimeError(f"Migration of {table} would lose rows ({old_n} -> {new_n}); aborted, backup: {backup_path}")
+        cur.execute(f"DROP TABLE {table}")
+        cur.execute(f"ALTER TABLE {new_table} RENAME TO {table}")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
 def init_database():
     """Initialize database with all required tables"""
     conn = get_connection()
@@ -38,38 +78,19 @@ def init_database():
     ''')
     
     # Funding rates table (Coin-M funding) - store only percentage, amount calculated automatically
-    # Check if old structure exists and migrate
-    try:
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='funding_rates'")
-        if cursor.fetchone():
-            cursor.execute("PRAGMA table_info(funding_rates)")
-            columns = [col[1] for col in cursor.fetchall()]
-            
-            if 'amount' in columns:
-                # Old structure exists, migrate
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS funding_rates_new (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        year INTEGER NOT NULL,
-                        month INTEGER NOT NULL,
-                        asset TEXT NOT NULL,
-                        percentage REAL NOT NULL,
-                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE(year, month, asset)
-                    )
-                ''')
-                cursor.execute('''
-                    INSERT OR IGNORE INTO funding_rates_new (id, year, month, asset, percentage, created_at)
-                    SELECT id, year, month, asset, COALESCE(percentage, 0), created_at 
-                    FROM funding_rates
-                ''')
-                cursor.execute("DROP TABLE funding_rates")
-                cursor.execute("ALTER TABLE funding_rates_new RENAME TO funding_rates")
-                conn.commit()
-    except Exception as e:
-        # Table doesn't exist or error, create new
-        pass
-    
+    _drop_legacy_amount_column(conn, 'funding_rates', 'id, year, month, asset, percentage, created_at', '''
+        CREATE TABLE funding_rates_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL,
+            asset TEXT NOT NULL,
+            percentage REAL NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(year, month, asset)
+        )
+    ''', 'id, year, month, asset, COALESCE(percentage, 0), created_at')
+    cursor = conn.cursor()
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS funding_rates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,37 +104,18 @@ def init_database():
     ''')
     
     # Pool rates table (USDT pools) - store only APY, amount calculated automatically
-    # Check if old structure exists and migrate
-    try:
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pool_rates'")
-        if cursor.fetchone():
-            cursor.execute("PRAGMA table_info(pool_rates)")
-            columns = [col[1] for col in cursor.fetchall()]
-            
-            if 'amount' in columns:
-                # Old structure exists, migrate
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS pool_rates_new (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        year INTEGER NOT NULL,
-                        month INTEGER NOT NULL,
-                        apy REAL NOT NULL,
-                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE(year, month)
-                    )
-                ''')
-                cursor.execute('''
-                    INSERT OR IGNORE INTO pool_rates_new (id, year, month, apy, created_at)
-                    SELECT id, year, month, apy, created_at 
-                    FROM pool_rates
-                ''')
-                cursor.execute("DROP TABLE pool_rates")
-                cursor.execute("ALTER TABLE pool_rates_new RENAME TO pool_rates")
-                conn.commit()
-    except Exception as e:
-        # Table doesn't exist or error, create new
-        pass
-    
+    _drop_legacy_amount_column(conn, 'pool_rates', 'id, year, month, apy, created_at', '''
+        CREATE TABLE pool_rates_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            year INTEGER NOT NULL,
+            month INTEGER NOT NULL,
+            apy REAL NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(year, month)
+        )
+    ''', 'id, year, month, apy, created_at')
+    cursor = conn.cursor()
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pool_rates (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
