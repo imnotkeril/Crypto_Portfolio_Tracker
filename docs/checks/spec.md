@@ -36,3 +36,5 @@ No P0/P1 finding and no checklist FAIL; three P2 findings where the SPEC's claim
 | A-03 | valid | lead | transactions.py:361-362 st.success then st.rerun; AC1.3 reworded |
 
 Read: E:/Main/Dev/coding-brain/agents/auditor.md, E:/Main/Dev/coding-brain/rules/audit.md, E:/Main/Dev/coding-brain/process/spec.md, E:/Main/Dev/coding-brain/routers/projects/finance/ (grep disclaimer), docs/SPEC.md, README.md, tests/conftest.py, tests/test_database.py, tests/test_metrics.py, tests/test_portfolio_calculator.py, utils/database.py, utils/portfolio_calculator.py, utils/metrics.py, utils/backtest_data.py (grep), main.py, pages/transactions.py, pages/funding.py, pages/pools.py (grep), pages/backtest.py (grep), pages/guide.py (grep), .streamlit/config.toml (grep)
+
+Note (lead): cite-check passed before the fixes (verdict OK, citations verified). A-03 quote is now "not found" because SPEC AC1.3 was reworded to fix that very finding; AC1.1/AC12.1 likewise reworded.
