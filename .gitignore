@@ -58,8 +58,8 @@ ehthumbs.db
 Thumbs.db
 Desktop.ini
 
-# Streamlit
-.streamlit/
+# Streamlit (config.toml is tracked; secrets are not)
+.streamlit/secrets.toml
 
 # Logs
 *.log
@@ -82,3 +82,6 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Local virtualenv
+.venv/

@@ -5,7 +5,6 @@ Calculates portfolio performance metrics: returns, volatility, Sharpe, Sortino, 
 import pandas as pd
 import numpy as np
 from typing import Dict, Tuple
-from datetime import datetime
 
 
 def calculate_returns(portfolio_values: pd.Series) -> pd.Series:
@@ -85,7 +84,7 @@ def calculate_monthly_returns(portfolio_values: pd.Series) -> pd.Series:
     """
     portfolio_df = pd.DataFrame({'value': portfolio_values})
     portfolio_df.index = pd.to_datetime(portfolio_df.index)
-    monthly = portfolio_df.resample('M').last()
+    monthly = portfolio_df.resample('ME').last()
     
     # Filter out zero values before calculating returns
     monthly_non_zero = monthly[monthly['value'] > 0]
@@ -146,7 +145,7 @@ def calculate_yearly_returns(portfolio_values: pd.Series) -> pd.Series:
     """
     portfolio_df = pd.DataFrame({'value': portfolio_values})
     portfolio_df.index = pd.to_datetime(portfolio_df.index)
-    yearly = portfolio_df.resample('Y').last()
+    yearly = portfolio_df.resample('YE').last()
     yearly_returns = yearly['value'].pct_change().fillna(0) * 100
     return yearly_returns
 

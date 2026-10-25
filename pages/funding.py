@@ -2,7 +2,6 @@
 Funding rates page - Coin-M funding for BTC and ETH
 """
 import streamlit as st
-import pandas as pd
 from datetime import datetime
 import sys
 import os
@@ -10,6 +9,7 @@ import os
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.database import init_database, add_funding_rate, get_funding_rates, delete_funding_rate
+from utils.assets import get_assets_for_funding
 
 
 st.set_page_config(page_title="Coin-M Funding", page_icon="💰", layout="wide")
@@ -18,7 +18,7 @@ st.set_page_config(page_title="Coin-M Funding", page_icon="💰", layout="wide")
 init_database()
 
 st.title("💰 Coin-M Funding")
-st.markdown("Track Coin-M funding for BTC and ETH by month")
+st.markdown("Track Coin-M funding by asset and month (amount calculated from your positions)")
 
 # Auto-populate button with average historical rates
 if st.button("🔄 Auto-populate average values (2022-2025)", type="secondary"):
@@ -40,7 +40,7 @@ if st.button("🔄 Auto-populate average values (2022-2025)", type="secondary"):
                 if year == 2025 and month > dt.now().month:
                     break
                 
-                for asset in ['BTC', 'ETH']:
+                for asset in ['BTC', 'ETH']:  # Default assets for auto-populate
                     annual_rate = funding_rates.get(year, {}).get(asset, 6.0)
                     try:
                         add_funding_rate(year, month, asset, annual_rate)
@@ -65,7 +65,7 @@ with st.expander("➕ Add Funding", expanded=len(funding_df) == 0):
         month = st.number_input("Month", min_value=1, max_value=12, value=datetime.now().month, key="funding_month")
     
     with col3:
-        asset = st.selectbox("Asset", ["BTC", "ETH"], key="funding_asset")
+        asset = st.selectbox("Asset", get_assets_for_funding(), key="funding_asset")
     
     with col4:
         percentage = st.number_input("Funding Percentage (%)", min_value=0.0, value=0.0, step=0.01, key="funding_percentage", 

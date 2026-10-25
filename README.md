@@ -19,12 +19,6 @@ Install all dependencies:
 pip install -r requirements.txt
 ```
 
-Or install manually:
-
-```bash
-pip install streamlit pandas numpy plotly ccxt python-dateutil
-```
-
 **Important:** If you're using a virtual environment, make sure it's activated before installing dependencies and running the application.
 
 ## Running the Application
@@ -41,6 +35,8 @@ Or via Python:
 python -m streamlit run main.py
 ```
 
+The app binds to `127.0.0.1` only (`.streamlit/config.toml`): it has no authentication, so do not expose it to a network.
+
 If you encounter `ModuleNotFoundError: No module named 'ccxt'`, ensure that:
 1. Dependencies are installed in the same Python environment as Streamlit
 2. You're using the correct Python interpreter
@@ -55,10 +51,16 @@ Crypto_portfolio/
 │   ├── transactions.py     # Transaction management
 │   ├── funding.py         # Coin-M funding tracking
 │   ├── pools.py           # USDT pool tracking
-│   └── analytics.py       # Performance analytics
+│   ├── analytics.py       # Performance analytics
+│   ├── backtest.py        # Funding-arb / alt market-neutral backtests
+│   └── guide.py           # Backtest guide (static text)
 ├── utils/                  # Utility modules
 │   ├── database.py        # SQLite database operations
 │   ├── price_fetcher.py   # Price fetching from Binance API
+│   ├── assets.py          # Binance USDT asset list (cached)
+│   ├── backtest_data.py   # Backtest data loaders (Binance or synthetic)
+│   ├── backtest_funding_arb.py  # Funding-arb strategy
+│   ├── backtest_alt_mn.py       # Alt market-neutral strategy
 │   ├── portfolio_calculator.py  # Portfolio value calculation
 │   └── metrics.py         # Performance metrics calculation
 ├── scripts/                # Helper scripts
@@ -91,9 +93,22 @@ Crypto_portfolio/
    - Interactive charts: cumulative returns, drawdowns, portfolio composition
    - Monthly and yearly return heatmaps
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+Tests use a throwaway SQLite file and mocked prices; they never touch `data/portfolio.db` or the network.
+
+## Backtests
+
+The Backtest page marks results built on synthetic or assumed data with a red warning. Unflagged results use real Binance data.
+
 ## Database
 
-The application uses SQLite database stored in `data/portfolio.db`. The database is automatically created on first run.
+The application uses SQLite database stored in `data/portfolio.db`. The database is automatically created on first run. Legacy schemas are migrated automatically after a file backup (`portfolio.db.pre-migration-*.bak`). Back up `data/portfolio.db` yourself: it is not in git.
 
 ### Tables
 
@@ -108,13 +123,8 @@ Price data is fetched from Binance API via the `ccxt` library. Historical prices
 
 ## Requirements
 
-- Python 3.8+
-- streamlit >= 1.28.0
-- pandas >= 2.0.0
-- numpy >= 1.24.0
-- plotly >= 5.17.0
-- ccxt >= 4.0.0
-- python-dateutil >= 2.8.2
+- Python 3.11+ (pandas 3.x requirement)
+Exact tested versions are pinned in `requirements.txt` (streamlit 1.66.1, pandas 3.1.0, numpy 2.4.6, plotly 7.1.0, ccxt 4.5.90, python-dateutil 3.0.0, requests 2.34.2, statsmodels 0.15.0). Dev/test: `requirements-dev.txt`.
 
 ## License
 

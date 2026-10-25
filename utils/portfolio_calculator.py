@@ -1,18 +1,18 @@
 """
 Portfolio calculator module
 Calculates portfolio value over time considering transactions, funding, and pools
-Automatically calculates funding based on real positions and pools based on real USDT amounts
+Supports any assets from transactions (Binance USDT pairs).
 """
+import json
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple
 import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.database import get_transactions, get_funding_rates, get_pool_rates
-from utils.price_fetcher import get_price, get_price_range
+from utils.price_fetcher import get_price
 
 
 def calculate_portfolio_history(start_date: str = "2022-01-01", end_date: str = None) -> pd.DataFrame:
@@ -34,19 +34,14 @@ def calculate_portfolio_history(start_date: str = "2022-01-01", end_date: str = 
     
     # Get all data
     transactions = get_transactions()
-    funding_rates = get_funding_rates()  # Only percentages now
-    pool_rates = get_pool_rates()  # Only APY now
-    
-    # Initialize portfolio
-    portfolio = {'BTC': 0.0, 'ETH': 0.0, 'USDT': 0.0}
-    
-    # Track pool balance (USDT placed into pool). This balance persists across months.
+    funding_rates = get_funding_rates()
+    pool_rates = get_pool_rates()
+
+    # Portfolio: dynamic assets from transactions, always include USDT
+    portfolio = {'USDT': 0.0}
     pool_balance_total = 0.0
-    daily_pool_balances = {}  # {date_str: balance}
-    
-    # Track positions for funding calculation (by month)
-    # Store daily positions to calculate average
-    daily_positions = {}  # {date_str: {'BTC': qty, 'ETH': qty}}
+    daily_pool_balances = {}
+    daily_positions = {}  # {date_str: {asset: qty, ...}}
     monthly_funding_income = {}  # {year-month: amount}
     monthly_pool_income = {}  # {year-month: amount}
     
@@ -72,55 +67,43 @@ def calculate_portfolio_history(start_date: str = "2022-01-01", end_date: str = 
             
             # New month - calculate funding and pool income for previous month
             if current_month is not None and current_month != year_month:
-                # Calculate average positions for previous month (current_month is the previous month here)
                 prev_month = current_month
                 month_start = datetime.strptime(f"{prev_month}-01", '%Y-%m-%d')
                 month_end = month_start + timedelta(days=32)
                 month_end = month_end.replace(day=1) - timedelta(days=1)
-                
-                # Get all daily positions for the month
-                month_positions_btc = []
-                month_positions_eth = []
+
+                # Average position per asset over the month
+                all_assets_in_month = set()
                 for day in pd.date_range(month_start, month_end, freq='D'):
                     day_str = day.strftime('%Y-%m-%d')
                     if day_str in daily_positions:
-                        month_positions_btc.append(daily_positions[day_str].get('BTC', 0.0))
-                        month_positions_eth.append(daily_positions[day_str].get('ETH', 0.0))
-                
-                # Calculate average positions
-                avg_btc = np.mean(month_positions_btc) if month_positions_btc else 0.0
-                avg_eth = np.mean(month_positions_eth) if month_positions_eth else 0.0
-                
-                # Calculate funding for previous month
+                        all_assets_in_month.update(daily_positions[day_str].keys())
+                avg_positions = {}
+                for asset in all_assets_in_month:
+                    qty_list = [
+                        daily_positions[day.strftime('%Y-%m-%d')].get(asset, 0.0)
+                        for day in pd.date_range(month_start, month_end, freq='D')
+                        if day.strftime('%Y-%m-%d') in daily_positions
+                    ]
+                    avg_positions[asset] = np.mean(qty_list) if qty_list else 0.0
+
                 prev_funding_rates = funding_rates[
                     (funding_rates['year'] == int(prev_month.split('-')[0])) &
                     (funding_rates['month'] == int(prev_month.split('-')[1]))
                 ]
-                
                 funding_income = 0.0
                 for _, fund_row in prev_funding_rates.iterrows():
                     asset = fund_row['asset']
                     percentage = fund_row['percentage']
-                    
-                    if asset == 'BTC':
-                        position_qty = avg_btc
-                    elif asset == 'ETH':
-                        position_qty = avg_eth
-                    else:
-                        continue
-                    
+                    position_qty = avg_positions.get(asset, 0.0)
                     if position_qty > 0:
-                        # Use mid-month price
                         mid_month = month_start + timedelta(days=15)
                         mid_month_str = mid_month.strftime('%Y-%m-%d')
                         price = get_price(asset, mid_month_str)
-                        
                         if price:
                             position_value = position_qty * price
-                            # Monthly funding = annual rate / 12
                             monthly_funding = position_value * (percentage / 100) / 12
                             funding_income += monthly_funding
-                
                 monthly_funding_income[prev_month] = funding_income
                 
                 # Calculate pool income for previous month using average pool balance in that month
@@ -168,89 +151,72 @@ def calculate_portfolio_history(start_date: str = "2022-01-01", end_date: str = 
             
             # Process transactions for this date
             day_transactions = transactions_sorted[transactions_sorted['date'] == date_str]
-            
+
             for _, tx in day_transactions.iterrows():
                 asset = tx['asset']
                 tx_type = tx['type']
                 quantity = tx['quantity']
-                price = tx['price']
                 value = tx['value']
-                
+                if asset not in portfolio:
+                    portfolio[asset] = 0.0
                 if tx_type == 'buy':
                     if asset == 'USDT':
-                        # Buying USDT - reduce from pool if available
                         if pool_balance_total > 0:
                             reduce_amount = min(value, pool_balance_total)
                             pool_balance_total -= reduce_amount
                         portfolio[asset] += quantity
                     else:
-                        # Buying crypto - use USDT from pool first, then from portfolio
-                        # If not enough in pool, reduce from portfolio USDT only if available
-                        # If not enough, consider it bought with external funds (don't go negative)
                         use_from_pool = min(value, pool_balance_total)
                         pool_balance_total -= use_from_pool
                         remaining_value = value - use_from_pool
-
                         if remaining_value > 0 and portfolio['USDT'] >= remaining_value:
                             portfolio['USDT'] -= remaining_value
-                        # If not enough USDT, don't go negative (external funding)
                         portfolio[asset] += quantity
-                
                 elif tx_type == 'sell':
                     if asset == 'USDT':
-                        # Selling USDT - add to pool
                         pool_balance_total += value
                         portfolio[asset] -= quantity
                     else:
-                        # Selling crypto - add USDT to pool
                         pool_balance_total += value
                         portfolio[asset] -= quantity
-            
-            # Track daily positions for funding calculation
-            daily_positions[date_str] = {
-                'BTC': portfolio['BTC'],
-                'ETH': portfolio['ETH']
-            }
+
+            daily_positions[date_str] = dict(portfolio)
             daily_pool_balances[date_str] = pool_balance_total
-            
-            # Get current prices and calculate portfolio value
+
             should_calculate = len(day_transactions) > 0 or date == dates[-1] or date.day == 1
-            
+
             if should_calculate:
                 try:
-                    btc_price = get_price('BTC', date_str)
-                    eth_price = get_price('ETH', date_str)
-                    
-                    if btc_price and eth_price:
-                        btc_value = portfolio['BTC'] * btc_price
-                        eth_value = portfolio['ETH'] * eth_price
-                        usdt_value = portfolio['USDT']
-                        total_value = btc_value + eth_value + usdt_value
-                        
-                        # Add pool balance to total (it's part of portfolio)
+                    assets_value = {}
+                    total_value = 0.0
+                    for ast, qty in portfolio.items():
+                        if ast == 'USDT':
+                            assets_value['USDT'] = qty
+                            total_value += qty
+                        else:
+                            price = get_price(ast, date_str)
+                            if price is not None:
+                                val = qty * price
+                                assets_value[ast] = val
+                                total_value += val
+                    if assets_value:
                         pool_balance_current = pool_balance_total
-                        
-                        # Get income for current month (may be 0 if not calculated yet)
-                        # Income is calculated at the end of month, so for current month it's 0 until month ends
-                        # But we'll update it later when month ends
                         funding_income_current = monthly_funding_income.get(current_month, 0.0)
                         pool_income_current = monthly_pool_income.get(current_month, 0.0)
-                        
-                        portfolio_history.append({
+                        entry = {
                             'date': date_str,
-                            'BTC_qty': portfolio['BTC'],
-                            'ETH_qty': portfolio['ETH'],
-                            'USDT_qty': portfolio['USDT'],
-                            'BTC_value': btc_value,
-                            'ETH_value': eth_value,
-                            'USDT_value': usdt_value,
+                            'assets_value': json.dumps(assets_value),
                             'pool_balance': pool_balance_current,
                             'total_value': total_value + pool_balance_current,
                             'funding_income': funding_income_current,
                             'pool_income': pool_income_current
-                        })
-                except Exception as e:
-                    # Skip this date if price fetch fails
+                        }
+                        # Backward compat columns for analytics
+                        entry['BTC_value'] = assets_value.get('BTC', 0.0)
+                        entry['ETH_value'] = assets_value.get('ETH', 0.0)
+                        entry['USDT_value'] = assets_value.get('USDT', 0.0)
+                        portfolio_history.append(entry)
+                except Exception:
                     pass
         
         # Calculate funding and pool for last month
@@ -258,47 +224,36 @@ def calculate_portfolio_history(start_date: str = "2022-01-01", end_date: str = 
             month_start = datetime.strptime(f"{current_month}-01", '%Y-%m-%d')
             month_end = month_start + timedelta(days=32)
             month_end = month_end.replace(day=1) - timedelta(days=1)
-            
-            # Get all daily positions for the month
-            month_positions_btc = []
-            month_positions_eth = []
+            all_assets_in_month = set()
             for day in pd.date_range(month_start, month_end, freq='D'):
                 day_str = day.strftime('%Y-%m-%d')
                 if day_str in daily_positions:
-                    month_positions_btc.append(daily_positions[day_str].get('BTC', 0.0))
-                    month_positions_eth.append(daily_positions[day_str].get('ETH', 0.0))
-            
-            # Calculate average positions
-            avg_btc = np.mean(month_positions_btc) if month_positions_btc else 0.0
-            avg_eth = np.mean(month_positions_eth) if month_positions_eth else 0.0
-            
+                    all_assets_in_month.update(daily_positions[day_str].keys())
+            avg_positions = {}
+            for asset in all_assets_in_month:
+                qty_list = [
+                    daily_positions[day.strftime('%Y-%m-%d')].get(asset, 0.0)
+                    for day in pd.date_range(month_start, month_end, freq='D')
+                    if day.strftime('%Y-%m-%d') in daily_positions
+                ]
+                avg_positions[asset] = np.mean(qty_list) if qty_list else 0.0
             prev_funding_rates = funding_rates[
                 (funding_rates['year'] == int(current_month.split('-')[0])) &
                 (funding_rates['month'] == int(current_month.split('-')[1]))
             ]
-            
             funding_income = 0.0
             for _, fund_row in prev_funding_rates.iterrows():
                 asset = fund_row['asset']
                 percentage = fund_row['percentage']
-                
-                if asset == 'BTC':
-                    position_qty = avg_btc
-                elif asset == 'ETH':
-                    position_qty = avg_eth
-                else:
-                    continue
-                
+                position_qty = avg_positions.get(asset, 0.0)
                 if position_qty > 0:
                     mid_month = month_start + timedelta(days=15)
                     mid_month_str = mid_month.strftime('%Y-%m-%d')
                     price = get_price(asset, mid_month_str)
-                    
                     if price:
                         position_value = position_qty * price
                         monthly_funding = position_value * (percentage / 100) / 12
                         funding_income += monthly_funding
-            
             monthly_funding_income[current_month] = funding_income
             
             # Calculate pool income for last month using average pool balance in that month
