@@ -49,6 +49,25 @@ def build_long_short_buckets(
     return longs, shorts
 
 
+def add_btc_hedge(
+    target: Dict[str, float], longs: List[str], shorts: List[str], betas_t: pd.Series
+) -> Dict[str, float]:
+    """Add a BTC leg that cancels the portfolio beta (R-03).
+
+    Short weights are negative, so beta_short is already signed and the net
+    portfolio beta is beta_long + beta_short.
+    """
+    def _beta(syms: List[str]) -> float:
+        return sum(
+            target.get(s, 0) * betas_t[s] for s in syms
+            if s in betas_t.index and pd.notna(betas_t[s])
+        )
+
+    out = dict(target)
+    out["BTC"] = -(_beta(longs) + _beta(shorts))
+    return out
+
+
 def run_alt_mn_backtest(
     prices: pd.DataFrame,
     initial_capital: float = 100_000,
@@ -117,16 +136,7 @@ def run_alt_mn_backtest(
                     target[s] = 0.5 / len(longs)
                 for s in shorts:
                     target[s] = -0.5 / len(shorts)
-                beta_long = sum(
-                    target.get(s, 0) * betas_df.loc[t, s] for s in longs
-                    if s in betas_df.columns and pd.notna(betas_df.loc[t, s])
-                )
-                beta_short = sum(
-                    target.get(s, 0) * betas_df.loc[t, s] for s in shorts
-                    if s in betas_df.columns and pd.notna(betas_df.loc[t, s])
-                )
-                net_beta = (beta_long or 0) - (beta_short or 0)
-                target["BTC"] = -net_beta
+                target = add_btc_hedge(target, longs, shorts, betas_df.loc[t])
                 pos_sum = sum(abs(v) for v in target.values())
                 if pos_sum > 0:
                     for k in target:
