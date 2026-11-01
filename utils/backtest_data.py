@@ -35,6 +35,27 @@ def _flag(df: pd.DataFrame, synthetic: bool, notes: Optional[List[str]] = None) 
     return df
 
 
+def _fetch_funding_history(symbol: str, start_ms: int, end_ms: int, limit: int = 1000) -> list:
+    """Binance GET /fapi/v1/fundingRate, paginated on fundingTime (R-04)."""
+    import requests
+    url = "https://fapi.binance.com/fapi/v1/fundingRate"
+    out: list = []
+    since = start_ms
+    while since < end_ms:
+        params = {"symbol": symbol, "startTime": since, "endTime": end_ms, "limit": limit}
+        resp = requests.get(url, params=params, timeout=10)
+        resp.raise_for_status()
+        page = resp.json()
+        if not page:
+            break
+        out.extend(page)
+        last = int(page[-1]["fundingTime"])
+        if last < since or len(page) < limit:
+            break
+        since = last + 1
+    return out
+
+
 def load_funding_arb_data(
     symbol: str = "BTC",
     start_date: str = "2024-01-01",
@@ -95,13 +116,8 @@ def load_funding_arb_data(
     notes: List[str] = []
     try:
         # Binance: GET /fapi/v1/fundingRate
-        import requests
-        url = "https://fapi.binance.com/fapi/v1/fundingRate"
-        params = {"symbol": f"{symbol}USDT", "startTime": int(start.timestamp() * 1000),
-                  "endTime": int(end.timestamp() * 1000), "limit": 1000}
-        resp = requests.get(url, params=params, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
+        data = _fetch_funding_history(
+            f"{symbol}USDT", int(start.timestamp() * 1000), int(end.timestamp() * 1000))
         if not data:
             raise ValueError("No funding data")
         fund_df = pd.DataFrame(data)
@@ -119,6 +135,9 @@ def load_funding_arb_data(
     # Merge (inner so we have both spot and perp)
     df = spot_df.merge(perp_df, on="date", how="inner").sort_values("date")
     df = df.merge(fund_daily, on="date", how="left")
+    n_filled = int(df["funding_8h"].isna().sum())
+    if n_filled:
+        notes.append(f"Funding missing for {n_filled} day(s): forward-filled/assumed (0.0001 before the first point).")
     df["funding_8h"] = df["funding_8h"].ffill().fillna(0.0001)
     df["is_funding_time"] = True  # apply once per day
     df = df.dropna(subset=["spot", "perp"])

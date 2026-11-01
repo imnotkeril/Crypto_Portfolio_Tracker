@@ -26,6 +26,8 @@ def show_data_source(frame: pd.DataFrame) -> None:
         st.warning("⚠️ SYNTHETIC / ASSUMED DATA — results are NOT a real backtest. " + " ".join(notes))
     else:
         st.caption("Data source: Binance (real historical data).")
+        if notes:
+            st.caption(" ".join(notes))
 
 
 tab1, tab2, tab3 = st.tabs(["Funding Rate Arb", "Alt Market-Neutral", "Справка"])
