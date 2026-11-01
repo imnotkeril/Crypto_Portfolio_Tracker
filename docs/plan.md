@@ -148,7 +148,7 @@ Characterization rule: where the SPEC documents a known defect (D1, D4, D5, D9),
   uses: skill:test-driven-development, stack:pytest, rule:tests
   check: `python -m pytest -q tests/test_database.py`
   done: AC1.1 (stored row values), AC12.1 (four tables listed, second `init_database()` changes nothing), AC12.4, AC12.5; characterization of D4: `get_current_portfolio` vs `get_portfolio_at_date` USDT differ after a crypto buy.
-- [ ] T20 [P g1] Tier A: history income math and edge cases
+- [x] T20 [P g1] Tier A: history income math and edge cases
   layer: qa · tier: A · owner: qa-tester · model: opus
   owns: tests/test_portfolio_calculator.py
   depends: T18

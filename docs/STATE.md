@@ -22,6 +22,7 @@ Branch: `chore/audit` (local only; nothing pushed).
 
 - [x] audit/architecture - OK, 0 findings (3 notes) [shadow]; auditor = sonnet FALLBACK (fable out of credits, weaker than author opus)
 - [x] audit/plan - FIX, 3 findings (2 valid, 1 invalid) [shadow]; plan fixed (T18/T30 owns, mypy count); auditor = sonnet fallback
+- [x] qa/T20 history income math, pool/R-02 toy, D2/D5/D9 characterized — tests/test_portfolio_calculator.py 19 passed, 0 failed
 - [x] qa/T19 ledger rows, schema/idempotent init, D4 + D11 characterized, migration AC12.4/12.5 — tests/test_database.py 21 passed, 0 failed
 - [x] qa/T21 metrics edge cases, D1 pinned, R-01/R-09/R-10 characterized — tests/test_metrics.py 25 passed, 0 failed
 
