@@ -27,6 +27,12 @@ Branch: `chore/audit` (local only; nothing pushed).
 - [x] qa/T21 metrics edge cases, D1 pinned, R-01/R-09/R-10 characterized — tests/test_metrics.py 25 passed, 0 failed
 
 - [x] qa/verdict YELLOW - 76 passed 0 failed 0 skipped; compileall ok; mypy 8 (info); AppTest 7 pages 0 exceptions, real-browser pass NOT done; 25/76 ACs uncovered; R-01 open (docs/QA.md)
+- [x] review/round1 - reviewer/opus (26 R findings: 6 P1) + security-reviewer/opus (4 S: 1 P1); fix loop backend-dev/sonnet: 8 fixes (R-02..R-06, R-08, S-01, S-02) each with regression test; 76 passed. OPEN P1: R-01 (deposits counted as returns) = owner decision. P2/P3 logged in docs/REVIEW.md. design-reviewer skipped (default Streamlit widgets).
+- [x] qa - qa-tester/sonnet: docs/QA.md verdict YELLOW (R-01 open; 25/76 ACs without test/browser step; no browser MCP in subagent)
+- [x] qa/browser - lead, built-in browser on a throwaway copy (127.0.0.1:28555 only): Backtest page shows disclaimer and SYNTHETIC banner after a run, dashboard loads, 2 console 404s (Streamlit static, not app code); other pages checked via AppTest by qa-tester
+- [x] docs - tech-writer/sonnet: README rewritten, CHANGELOG 1.0.0, SPEC drift fixed; commands run (pip check, pytest 76, health 200)
+- [x] lead re-verification 2026-11-01 - pytest 76 passed; doc-check spec 8/0, architecture 9/0 (3 owner gates), plan 9/0
+- [ ] audit/qa, audit/release-prep - not run (no release-prep; auditor budget); design/release not applicable
 
 ## Next
 - [ ] architecture — architect/opus: docs/ARCHITECTURE.md + docs/adr/
