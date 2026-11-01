@@ -3,9 +3,9 @@
 Status: reverse-engineered by agent 2026-10-25, pending owner approval
 Written by `analyst` in ADOPTION mode: this document describes what the product really does today (read from code, tests, README, audit), not aspirations. No idea file exists; the owner could not be questioned, so every unknown is a default in section 9. Family: finance / portfolio-risk (tracker variant, no optimizer). Sources read: `README.md`, `CLAUDE.md`, `docs/AUDIT_2026-10-24.md`, `docs/plan.md`, `docs/STATE.md`, `main.py`, `pages/*.py`, `utils/*.py`, `scripts/*.py`, `populate_funding.py`, `tests/*.py`, `requirements.txt`, `.streamlit/config.toml`, `.gitignore`.
 
-AC legend: `[x]` covered by an existing test in `tests/` (21 tests, `python -m pytest -q`); `[~]` partially covered (what is asserted is stated); `[ ]` not covered by any committed test (checked by a stated pytest to be written or by a Streamlit page step).
+AC legend: `[x]` covered by an existing test in `tests/` (76 tests, `python -m pytest -q`); `[~]` partially covered (what is asserted is stated); `[ ]` not covered by any committed test (checked by a stated pytest to be written or by a Streamlit page step).
 
-Disclaimer (required by the finance family; NOT present in the app or README today, see F15): "Research and educational tool. Not investment advice. Simulated and historical results do not guarantee future results; trading can lose all capital."
+Disclaimer (required by the finance family; present in README, main page and Backtest since fix dc627dd, see F15): "Research and educational tool. Not investment advice. Simulated and historical results do not guarantee future results; trading can lose all capital."
 
 ## 1. Idea restated
 A local, single-owner Streamlit app that records the owner's crypto buys and sells (priced from Binance public daily candles), tracks Coin-M funding income and USDT pool yield as monthly percentage inputs, rebuilds the portfolio value history in USDT, and shows return/risk metrics and charts. A secondary Backtest page runs two exploratory strategies (funding-rate arbitrage, alt market-neutral) on Binance or explicitly flagged synthetic data. Source: reverse-engineered from the repository (no `idea.md`); the README is the owner's own description.
@@ -43,7 +43,7 @@ Acceptance (Given / When / Then):
 - [x] AC1.2 Given one stored transaction When `delete_transaction(id)` is called Then `get_transactions()` is empty (`test_database.py::test_delete_transaction`).
 - [ ] AC1.3 Given the Transactions page, method Asset Quantity, quantity 0.1 BTC, automatic price on, Binance reachable When "Add Transaction" is clicked Then a row is stored with price equal to the Binance daily close of the chosen date, value = 0.1 x price, and the new row appears in Transaction History (the success message is cleared by `st.rerun()`, `pages/transactions.py:361-362`) (page step; or pytest with mocked `get_price`).
 - [ ] AC1.4 Given method USDT Amount, asset ETH, amount 1000, price 2000 When the transaction is added Then quantity stored is 0.5 and value is 1000 (page step).
-- [ ] AC1.5 Given method Position Percentage and an asset whose position on the chosen date is 0 When "Add Transaction" is clicked Then the error "position is 0. Add a buy first." is shown and nothing is stored; for asset USDT the warning "For USDT, use USDT amount input" is shown (page step).
+- [ ] AC1.5 Given method Position Percentage and an asset whose position on the chosen date is 0 When "Add Transaction" is clicked Then the warning "position is 0. Add a buy first." is shown in the input preview and the error with the same text on "Add Transaction", nothing is stored; for asset USDT the warning "For USDT, use USDT amount input" is shown (page step).
 - [ ] AC1.6 Given automatic price on and `get_price` returns None (Binance unreachable) When "Add Transaction" is clicked Then an error "Failed to get price ... enter price manually" is shown and no row is stored; with manual price > 0 the row is stored with that price (page step with network disabled).
 - [ ] AC1.7 Given quantity 0 (or amount 0) When "Add Transaction" is clicked Then "Specify quantity" (or "Specify USDT amount") is shown and nothing is stored (page step).
 - [ ] AC1.8 Given two transactions on the same day, buy at 90 and buy at 100 When the history table renders Then the buy at 100 is listed first (page step).
@@ -82,7 +82,7 @@ Acceptance:
 - [x] AC5.1 Given a funding row for 2024-01 BTC at 5.0 When `add_funding_rate(2024,1,"BTC",7.0)` is called Then exactly one row exists with percentage 7.0 (`test_rates_upsert`).
 - [ ] AC5.2 Given percentage 0 on the Funding page When "Add Funding" is clicked Then "Specify funding percentage" is shown and nothing is stored (page step).
 - [ ] AC5.3 Given an empty funding table, clock fixed to 2025-10-15 When the auto-populate loop runs Then 2 assets x (36 + 10) = 92 rows exist and every row is an estimate from the table above (pytest to write after extracting the loop, or page step: click the button and count rows in History).
-- [ ] AC5.4 Given a stored funding row When it is selected and "Delete" is clicked Then the row disappears from the history (page step; pytest on `delete_funding_rate` to write).
+- [~] AC5.4 Given a stored funding row When it is selected and "Delete" is clicked Then the row disappears from the history (page step; pytest on `delete_funding_rate` to write).
 
 ### F6 USDT pool inputs (P1)
 Behaviour: page `pages/pools.py`, table `pool_rates` (year, month, apy) unique (year, month), replace on conflict. APY in percent, must be > 0 to save. Auto-populate writes ESTIMATES: APY 8.0/6.5/5.0/4.5 for 2022/2023/2024/2025 with the same month-limit quirk as F5. Shows history, average and range, yearly average, an APY line chart, delete by selection. Pool balance is not entered; it is derived in F7.
@@ -98,10 +98,10 @@ Acceptance:
 - [~] AC7.1 Given no transactions When `calculate_portfolio_history` is called Then it returns a DataFrame without raising (`test_no_transactions_returns_frame` asserts only the type; emptiness and columns are not asserted).
 - [x] AC7.2 Given 5000 USDT deposited then 0.1 BTC bought at a constant price of 100 for 10 USDT When the history is built to month end Then the last `total_value` is 5000 and `BTC_value` is 10 (`test_total_value_conserved_on_buy_at_market`).
 - [x] AC7.3 Given 1200 USDT, a BTC buy and a sell of the same value in January 2024 and a January pool APY of 12 When the history runs into February Then the last `total_value` exceeds 1200, showing pool income was credited (`test_pool_income_added_after_month_end`; the exact amount is not asserted).
-- [ ] AC7.4 Given an average BTC position of 1 during January, price 100 on 2024-01-16 and a January funding row of 12 percent When the history runs past 2024-01-31 Then `funding_income` for January equals 1 x 100 x 12 / 100 / 12 = 1.0 and USDT rises by 1.0 (pytest to write).
-- [ ] AC7.5 Given pool balance 500 and a buy worth 300 When the buy is processed Then the pool balance becomes 200 and USDT is unchanged (pytest to write).
-- [ ] AC7.6 Given `get_price` returns None for ETH When a snapshot is built Then ETH is absent from `assets_value` and total_value excludes it (pytest to write; documents a known understatement).
-- [ ] AC7.7 Given a transaction dated 2021-12-31 and default start 2022-01-01 When the history is built Then that transaction is not applied (pytest to write; documents the hard-coded start).
+- [x] AC7.4 Given an average BTC position of 1 during January, price 100 on 2024-01-16 and a January funding row of 12 percent When the history runs past 2024-01-31 Then `funding_income` for January equals 1 x 100 x 12 / 100 / 12 = 1.0 and USDT rises by 1.0 (pytest to write).
+- [x] AC7.5 Given pool balance 500 and a buy worth 300 When the buy is processed Then the pool balance becomes 200 and USDT is unchanged (pytest to write).
+- [x] AC7.6 Given `get_price` returns None for ETH When a snapshot is built Then ETH is absent from `assets_value` and total_value excludes it (pytest to write; documents a known understatement).
+- [x] AC7.7 Given a transaction dated 2021-12-31 and default start 2022-01-01 When the history is built Then that transaction is not applied (pytest to write; documents the hard-coded start).
 
 ### F8 Performance metrics (P1)
 Behaviour: `utils/metrics.py`, input is the `total_value` series. Returns are simple period-to-period percentage changes between consecutive rows (first = 0). Volatility = std x sqrt(252) x 100; Sharpe = (mean x 252 - rf/100) / (std x sqrt(252)) with rf default 0; Sortino uses the std of negative returns only and returns the sentinel 999.0 when there are no negative returns and the mean is positive. Annual return = compound growth over (last date - first date) / 365.25 years from the first non-zero value; total return uses the first non-zero value; monthly and yearly returns resample with `ME` and `YE` (fixed for pandas 3); max drawdown returns (percent, peak date, trough date); zero, NaN, inf and short series return 0.0 and never raise.
@@ -112,9 +112,9 @@ Acceptance:
 - [x] AC8.4 Given a constant or one-element return series When `calculate_volatility` runs Then 0.0; annualized equals non-annualized x sqrt(252) (`test_volatility_constant_is_zero_and_short_safe`, `test_volatility_annualization`).
 - [x] AC8.5 Given zero-variance returns When `calculate_sharpe_ratio` runs Then 0.0; given positive drift with variance Then > 0 (`test_sharpe_zero_std`, `test_sharpe_positive_for_positive_drift`).
 - [x] AC8.6 Given values 0, 0, 100, 110, 121, 90, 130 then flat for 30 days When `calculate_all_metrics` runs Then every headline metric is finite, total_return is 30 (first non-zero is 100) and max_drawdown is (121-90)/121 x 100 (`test_all_metrics_keys_and_values`; also exercises the `ME`/`YE` resample).
-- [ ] AC8.7 Given returns with no negative element and a positive mean When `calculate_sortino_ratio` runs Then 999.0 (pytest to write).
-- [ ] AC8.8 Given values doubling over exactly 365.25 days When `calculate_annual_return` runs Then about 100.0 (pytest to write).
-- [ ] AC8.9 Given fewer than two months with positive values When `calculate_monthly_returns` runs Then an empty float series (pytest to write).
+- [x] AC8.7 Given returns with no negative element and a positive mean When `calculate_sortino_ratio` runs Then 999.0 (pytest to write).
+- [x] AC8.8 Given values doubling over exactly 365.25 days When `calculate_annual_return` runs Then about 100.0 (pytest to write).
+- [x] AC8.9 Given fewer than two months with positive values When `calculate_monthly_returns` runs Then an empty float series (pytest to write).
 
 ### F9 Analytics page (P1)
 Behaviour: `pages/analytics.py` calls F7 then F8 and shows: key metrics (total return, average annual, average monthly, volatility, max drawdown, average drawdown, Sharpe, Sortino; Sharpe/Sortino display "N/A" when they equal 0.00), monthly-return heatmap, yearly-return bars, cumulative return + drawdown chart, portfolio value chart, per-asset price chart with buy/sell markers (one price lookup per day of the asset's transaction range, cached), composition bar and pie (latest snapshot, positive values only), and a funding/pool income block (totals, percent of current value, monthly and cumulative charts, monthly table). With no history it shows a warning and stops. Chart labels contain one Russian string (`цена`).
@@ -149,8 +149,8 @@ Acceptance:
 - [~] AC12.1 Given a fresh path When `init_database()` runs Then the four tables exist and all CRUD tests pass on them; running it twice changes nothing (partly covered: the `db` fixture runs `init_database()` once and CRUD tests pass; no test lists the four tables or runs it twice - pytest to write).
 - [x] AC12.2 Given a legacy `funding_rates` table with an `amount` column and one NULL percentage When `init_database()` runs Then both rows survive, `amount` is gone, the NULL becomes 0.0, and a `.pre-migration-*.bak` file exists (`test_legacy_migration_keeps_rows_and_makes_backup`).
 - [x] AC12.3 Given invalid replacement-table SQL When `_drop_legacy_amount_column` runs Then a `sqlite3.Error` is raised and the old table still has 2 rows (`test_migration_failure_is_raised_and_old_table_kept`).
-- [ ] AC12.4 Given a legacy table whose copy would lose rows (duplicate unique keys) When migration runs Then `RuntimeError("... would lose rows ...")` is raised and the old table is kept (pytest to write).
-- [ ] AC12.5 Given a legacy `pool_rates` table with `amount` When `init_database()` runs Then it is migrated the same way (pytest to write).
+- [x] AC12.4 Given a legacy table whose copy would lose rows (duplicate unique keys) When migration runs Then `RuntimeError("... would lose rows ...")` is raised and the old table is kept (pytest to write).
+- [x] AC12.5 Given a legacy `pool_rates` table with `amount` When `init_database()` runs Then it is migrated the same way (pytest to write).
 
 ### F13 Local-only, no-auth runtime (P1)
 Behaviour: the app has no login and exposes read/write access to financial data, so it must listen on loopback only. `.streamlit/config.toml` (tracked) sets `server.address = "127.0.0.1"`, `gatherUsageStats = false`. No API keys or secrets are used or required; only public Binance endpoints are called. `data/` (database and caches) is git-ignored and never committed.
@@ -221,7 +221,7 @@ n/a for a design step: the UI is stock Streamlit (wide layout, sidebar page navi
 | Binance public API: rate limits, outages, regional blocking (ccxt `enableRateLimit` is on); history lookups issue one request per uncached day | Slow first load (the audit saw Backtest cold start above 60 s), partial data | Local cache; errors return None; offline asset fallback list |
 | Licence: Binance public data is personal use only; the project is "open source for personal use" with no LICENSE file | Redistribution or commercial reuse is not covered | Personal use only; add a LICENSE and re-check terms before any sharing |
 | Dependencies pinned (streamlit 1.66.1, pandas 3.1.0, numpy 2.4.6, plotly 7.1.0, ccxt 4.5.90, python-dateutil 3.0.0, requests 2.34.2, statsmodels 0.15.0); `use_container_width` deprecated (24 uses) | Future Streamlit release can break pages | Pins in `requirements.txt`; cleanup listed in `docs/plan.md` |
-| Tests cover 21 cases (database, metrics, portfolio history); price fetcher, backtests and all pages are untested | Regressions in uncovered areas go unnoticed | Section 4 marks every uncovered AC as "to write"; audit AppTest runs were ad hoc and are not committed |
+| Tests cover 76 cases (database, metrics, portfolio history, assets, backtest data and alt-MN regressions, config, disclaimer); price fetcher, backtest engines and page UIs are largely untested | Regressions in uncovered areas go unnoticed | Section 4 marks every uncovered AC as "to write"; audit AppTest runs were ad hoc and are not committed |
 | Mixed locale: Backtest and Guide pages Russian, rest English; one Russian chart label in Analytics | Inconsistent UI | Recorded as an assumption; no change without owner decision |
 | Legal: tool is not investment advice and the disclaimer is absent today (F15) | Misreading outputs as advice | Add the disclaimer line (AC15.1, AC15.2); personal use only |
 | Known-traps file (`known-traps.md`) not opened in this run | Possible missed item | Re-check at architecture step |
@@ -248,7 +248,7 @@ None.
 
 ## 11. Definition of done
 Project-level and measurable for the product as it exists, and for any change made against this spec:
-- `python -m pytest -q` passes with at least 21 passed, 0 failed, 0 skipped (current baseline), with output pasted; every `[x]` AC maps to a passing test named in the AC.
+- `python -m pytest -q` passes with at least 76 passed, 0 failed, 0 skipped (current baseline), with output pasted; every `[x]` AC maps to a passing test named in the AC.
 - Before any change in an area, the `[ ]` ACs of that feature are first turned into pytest tests (or a recorded Streamlit page step with evidence) and pass; tier A areas (F1, F2, F7 ledger and income math, F12 migration) are test-first.
 - No test touches `data/portfolio.db` or the network: `git status` shows no change under `data/`, and `grep -rn "portfolio.db" tests` returns only monkeypatched paths.
 - `streamlit run main.py` starts, `GET /_stcore/health` returns 200, all seven pages load without an exception (AppTest or browser), and the listening address is `127.0.0.1` (AC13.2).
