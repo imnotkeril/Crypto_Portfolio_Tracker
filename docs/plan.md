@@ -264,7 +264,7 @@ Characterization rule: where the SPEC documents a known defect (D1, D4, D5, D9),
   uses: rule:tests, stack:pytest
   check: `python -m pytest -q && python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('docs/QA.md').is_file() else 1)"`
   done: risk map per tier; AC13.2 (netstat shows `127.0.0.1:<port>`), `/_stcore/health` 200, all 7 pages load; one read-only real Binance smoke (prices only, never the personal DB).
-- [ ] T36 README and CHANGELOG verified literally
+- [x] T36 README and CHANGELOG verified literally
   layer: docs · tier: C · owner: tech-writer · model: haiku
   owns: README.md, CHANGELOG.md
   depends: T35

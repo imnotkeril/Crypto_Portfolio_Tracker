@@ -40,3 +40,4 @@ Branch: `chore/audit` (local only; nothing pushed).
 - Approve or edit `docs/SPEC.md` (reverse-engineered).
 - Merge/push decision for `chore/audit` (nothing pushed).
 - Local-only (current) or hosted?
+- [x] docs/README - 7 commands verified (pip check, pytest 76 passed, streamlit health 200 in temp copy, auto_populate_funding in temp copy, README check); /llms.txt: no API; env vars: none (no .env.example, diff n.a.); CHANGELOG 1.0.0; SPEC drift fixed
