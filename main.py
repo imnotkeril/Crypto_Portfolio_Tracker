@@ -6,6 +6,7 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(__file__))
+from utils.disclaimer import DISCLAIMER
 from utils.database import init_database, get_current_portfolio, get_transactions
 from utils.price_fetcher import get_current_price
 from utils.portfolio_calculator import calculate_portfolio_history
@@ -138,3 +139,4 @@ if True:  # Always show dashboard on main page
 st.sidebar.markdown("---")
 st.sidebar.markdown("**Version:** 1.0.0")
 st.sidebar.markdown("**Period:** from 2022")
+st.sidebar.caption(DISCLAIMER)

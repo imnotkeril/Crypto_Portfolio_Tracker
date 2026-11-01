@@ -1,5 +1,7 @@
 # Crypto Portfolio Tracker
 
+> Research and educational tool. Not investment advice. Simulated and historical results do not guarantee future results; trading can lose all capital.
+
 A comprehensive cryptocurrency portfolio tracking application with automatic metric calculation and visualization.
 
 ## Features

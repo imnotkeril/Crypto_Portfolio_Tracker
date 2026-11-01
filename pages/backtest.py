@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from utils.disclaimer import DISCLAIMER
 from utils.backtest_data import load_funding_arb_data, load_alt_mn_data
 from utils.backtest_funding_arb import run_funding_arb_backtest
 from utils.backtest_alt_mn import run_alt_mn_backtest
@@ -16,6 +17,7 @@ from utils.backtest_alt_mn import run_alt_mn_backtest
 st.set_page_config(page_title="Backtest", page_icon="📈", layout="wide")
 
 st.title("📈 Backtest: Funding Arb & Alt Market-Neutral")
+st.warning(DISCLAIMER)
 st.markdown("Запуск бэктестов двух стратегий из гайда. Настройте параметры и нажмите **Запустить**.")
 
 
@@ -81,6 +83,7 @@ with tab1:
                     show_data_source(df)
 
                     st.subheader("Результаты")
+                    st.caption(DISCLAIMER)
                     m1, m2, m3, m4, m5 = st.columns(5)
                     m1.metric("Доходность %", f"{metrics['total_return_pct']:.2f}")
                     m2.metric("Годовая волатильность %", f"{metrics['volatility_annual_pct']:.2f}")
@@ -164,6 +167,7 @@ with tab2:
                     show_data_source(prices)
 
                     st.subheader("Результаты")
+                    st.caption(DISCLAIMER)
                     m1, m2, m3, m4, m5 = st.columns(5)
                     m1.metric("Доходность %", f"{metrics['total_return_pct']:.2f}")
                     m2.metric("Годовая волатильность %", f"{metrics['volatility_annual_pct']:.2f}")
