@@ -2,98 +2,65 @@
 
 > Research and educational tool. Not investment advice. Simulated and historical results do not guarantee future results; trading can lose all capital.
 
-A comprehensive cryptocurrency portfolio tracking application with automatic metric calculation and visualization.
+A local, single-user Streamlit app. You record crypto buys/sells, Coin-M funding and USDT-pool yields by hand; the app prices them with Binance public daily candles, rebuilds the portfolio value history in USDT and computes return/risk metrics. It also contains two research backtests (funding arbitrage, alt market-neutral). It places no orders and needs no API keys.
 
-## Features
+## Requirements
 
-- **Transaction Tracking**: Record buy/sell transactions with automatic price fetching from Binance
-- **Coin-M Funding**: Track Coin-M funding income for BTC and ETH positions
-- **USDT Pools**: Track USDT pool yields with automatic return calculation
-- **Performance Metrics**: Calculate returns, volatility, Sharpe ratio, Sortino ratio, and drawdowns
-- **Visualizations**: Interactive charts for cumulative returns, entry/exit points, and portfolio composition
-- **Price Discovery**: Find historical dates when prices matched your target (useful for reconstructing transaction history)
+- Python 3.11+ (pandas 3.x)
+- Internet access for prices (Binance public REST via `ccxt`, read-only, no keys)
 
-## Installation
-
-Install all dependencies:
+## Install
 
 ```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate    Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**Important:** If you're using a virtual environment, make sure it's activated before installing dependencies and running the application.
+Direct dependencies are pinned in `requirements.txt` (streamlit 1.66.1, pandas 3.1.0, numpy 2.4.6, plotly 7.1.0, ccxt 4.5.90, python-dateutil 3.0.0, requests 2.34.2, statsmodels 0.15.0); transitive ones are not.
 
-## Running the Application
-
-Run the application with:
+## Run
 
 ```bash
 streamlit run main.py
 ```
 
-Or via Python:
+Opens on http://localhost:8501. `.streamlit/config.toml` binds the server to `127.0.0.1` and sets `allowedHosts = ["localhost", "127.0.0.1"]`. There is no authentication: do not expose the app to a network or put it on a public host.
 
-```bash
-python -m streamlit run main.py
-```
+## Pages
 
-The app binds to `127.0.0.1` only (`.streamlit/config.toml`): it has no authentication, so do not expose it to a network.
+| Page | What it does |
+|---|---|
+| Main (`main.py`) | Current holdings, prices, total value, quick stats, recent transactions, portfolio value history chart. Shows the disclaimer. |
+| Transactions | Add/delete buys and sells (by asset quantity, position percentage or USDT amount; USDT deposits/withdrawals). Prices fetched from Binance. Price discovery ("By Target Price"): finds historical dates when an asset traded near a target price. |
+| Funding | Monthly Coin-M funding % for BTC/ETH; amounts are computed from your average position. Auto-populate with estimated yearly averages. |
+| Pools | Monthly USDT-pool APY; pool balance is fed by sales and USDT deposits. Auto-populate with estimates. |
+| Analytics | Total/annual/monthly return, volatility, Sharpe, Sortino, drawdowns, income tiles, monthly and yearly return heatmaps, composition charts. |
+| Backtest | Funding-arb and Alt market-neutral research backtests on Binance data or synthetic data. Any result built on synthetic or assumed data (including forward-filled funding) is flagged with a red SYNTHETIC / ASSUMED DATA warning; unflagged results use real Binance data. Shows the disclaimer. |
+| Guide | Static text guide to the backtests. |
 
-If you encounter `ModuleNotFoundError: No module named 'ccxt'`, ensure that:
-1. Dependencies are installed in the same Python environment as Streamlit
-2. You're using the correct Python interpreter
-3. Virtual environment is activated (if used)
+Typical flow: add transactions, then funding and pool rates, then read Analytics.
 
-## Project Structure
+## Data and database
 
-```
-Crypto_portfolio/
-├── main.py                 # Main dashboard page
-├── pages/                  # Application pages
-│   ├── transactions.py     # Transaction management
-│   ├── funding.py         # Coin-M funding tracking
-│   ├── pools.py           # USDT pool tracking
-│   ├── analytics.py       # Performance analytics
-│   ├── backtest.py        # Funding-arb / alt market-neutral backtests
-│   └── guide.py           # Backtest guide (static text)
-├── utils/                  # Utility modules
-│   ├── database.py        # SQLite database operations
-│   ├── price_fetcher.py   # Price fetching from Binance API
-│   ├── assets.py          # Binance USDT asset list (cached)
-│   ├── backtest_data.py   # Backtest data loaders (Binance or synthetic)
-│   ├── backtest_funding_arb.py  # Funding-arb strategy
-│   ├── backtest_alt_mn.py       # Alt market-neutral strategy
-│   ├── portfolio_calculator.py  # Portfolio value calculation
-│   └── metrics.py         # Performance metrics calculation
-├── scripts/                # Helper scripts
-│   ├── auto_populate_funding.py  # Auto-populate funding data
-│   ├── populate_funding_data.py  # Populate funding from API
-│   └── migrate_database.py      # Database migration
-├── data/                   # Data directory
-│   ├── portfolio.db       # SQLite database
-│   └── cache/             # Price cache
-└── requirements.txt       # Python dependencies
-```
+- SQLite file `data/portfolio.db`, created on first run (tables: `transactions`, `funding_rates`, `pool_rates`, `portfolio_snapshots`). Price and asset caches live in `data/cache/`.
+- The whole `data/` directory is gitignored: it is not in the repository and not backed up. Back it up by copying the file while the app is stopped.
+- A legacy schema (funding/pool tables with an `amount` column) is migrated automatically on start, after a file copy `data/portfolio.db.pre-migration-<timestamp>.bak`; the migration aborts and keeps the old table if it would lose rows.
 
-## Usage
+## Environment variables
 
-1. **Transactions**: Add all your buy and sell transactions on the "Transactions" page
-   - Supports multiple input methods: asset quantity, position percentage, or USDT amount
-   - Automatic price fetching from Binance
-   - Price discovery feature to find dates when prices matched your target
+None. The app reads no environment variables and needs no `.env` file (there is no `.env.example`).
 
-2. **Funding**: Enter Coin-M funding rates on the "Funding" page
-   - Funding amounts are calculated automatically based on your actual positions
-   - Supports auto-population with historical averages
+## Assumptions
 
-3. **Pools**: Enter USDT pool APY data on the "Pools" page
-   - Pool amounts and income are calculated automatically based on sales
-   - Supports auto-population with historical averages
+| Assumption | Effect |
+|---|---|
+| Base currency is USDT; history is built from 2022-01-01 (earlier transactions are ignored) | Debt D2 |
+| Metrics annualize with 252 periods per year on a sparse series (rows on transaction days, month starts and the last day) | Volatility, Sharpe and Sortino are not standard figures (D1, R-11) |
+| Income is computed monthly from average positions/balances; the current month's income is shown but not added to total value | D5 |
+| Prices are Binance daily candles; the price cache never expires | D6 |
 
-4. **Analytics**: View performance metrics and charts on the "Analytics" page
-   - Key metrics: total return, annual return, volatility, Sharpe ratio, Sortino ratio
-   - Interactive charts: cumulative returns, drawdowns, portfolio composition
-   - Monthly and yearly return heatmaps
+Full list of known debt D1-D13: `docs/ARCHITECTURE.md` section 7.2.
 
 ## Tests
 
@@ -102,39 +69,59 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-Tests use a throwaway SQLite file and mocked prices; they never touch `data/portfolio.db` or the network.
+76 tests. They use throwaway SQLite files and mocked prices; they never touch `data/portfolio.db`. `requirements-dev.txt` also pins mypy and pandas-stubs.
 
-## Backtests
+## Helper scripts
 
-The Backtest page marks results built on synthetic or assumed data with a red warning. Unflagged results use real Binance data.
+These write to the real `data/portfolio.db` (resolved from the repo path). Back it up first; none of them has a dry-run flag or `--help`.
 
-## Database
+| Script | What it does |
+|---|---|
+| `scripts/auto_populate_funding.py` | Upserts estimated yearly Coin-M funding % (BTC/ETH, 2022 to current month). `populate_funding.py` in the repo root is a duplicate of it. |
+| `scripts/populate_funding_data.py` | Interactive (asks 1 or 2). Writes the same estimated rates as above; option 2 tries Binance but always falls back to the estimates, so no real funding data is stored. |
+| `scripts/migrate_database.py` | Legacy manual migration. Unsafe: drops/recreates tables without a backup (finding S-03). The app already migrates safely on start; do not run this script. |
 
-The application uses SQLite database stored in `data/portfolio.db`. The database is automatically created on first run. Legacy schemas are migrated automatically after a file backup (`portfolio.db.pre-migration-*.bak`). Back up `data/portfolio.db` yourself: it is not in git.
+Run from the repo root, e.g. `python scripts/auto_populate_funding.py`.
 
-### Tables
+## Project structure
 
-- `transactions`: Buy/sell transactions
-- `funding_rates`: Coin-M funding rates (percentage only, amounts calculated automatically)
-- `pool_rates`: USDT pool APY rates (amounts calculated automatically)
-- `portfolio_snapshots`: Historical portfolio snapshots for metrics
+```
+main.py                     Dashboard (entry point)
+pages/                      transactions, funding, pools, analytics, backtest, guide
+utils/
+  database.py               SQLite access, schema init and migration
+  price_fetcher.py          Binance prices via ccxt, JSON cache
+  assets.py                 Binance USDT asset list (cached 24 h)
+  portfolio_calculator.py   Portfolio value history and income
+  metrics.py                Return/risk metrics
+  backtest_data.py          Backtest data loaders (Binance or synthetic)
+  backtest_funding_arb.py   Funding-arb strategy
+  backtest_alt_mn.py        Alt market-neutral strategy
+  disclaimer.py             Single source of the disclaimer text
+scripts/                    Helper scripts (see above)
+populate_funding.py         Duplicate of scripts/auto_populate_funding.py
+tests/                      pytest suite
+docs/                       SPEC, ARCHITECTURE (+ adr/), plan, REVIEW, QA, STATE, audit
+.streamlit/config.toml      Loopback bind, allowedHosts, no usage stats
+requirements.txt            Runtime pins
+requirements-dev.txt        Test/typing pins (includes runtime)
+data/                       Created at runtime, gitignored
+```
 
-## Price Data
+## Known limitations
 
-Price data is fetched from Binance API via the `ccxt` library. Historical prices are cached locally in `data/cache/price_cache.json` to reduce API calls.
+Status as of the QA verdict YELLOW (`docs/QA.md`); full findings in `docs/REVIEW.md`.
 
-## Requirements
+- **R-01 (open, owner decision):** external deposits/withdrawals are counted as performance, so returns and drawdowns are distorted when you add or remove USDT. Metrics are not time-weighted.
+- **Sparse-history annualization (D1/R-11, open):** each return is a monthly or irregular step annualized as if daily; volatility, Sharpe and Sortino are indicative only.
+- Other open items: "Average Annual" dilutes the first year (R-09), Sortino sentinel with one negative return (R-10), backtest annualization mixes 365 and 252 and has same-bar fills and no hold-out (R-12, R-13, D10), dashboard total value excludes funding/pool income (R-16), sells can drive a position negative and deletion has no confirmation (D11), a price error drops a whole history row silently (D9/R-17).
+- Price fetcher and backtest engines are largely untested; no real-browser QA pass (layout, accessibility) was done.
+- Tested on Windows and Python 3.11 only.
 
-- Python 3.11+ (pandas 3.x requirement)
-Exact tested versions are pinned in `requirements.txt` (streamlit 1.66.1, pandas 3.1.0, numpy 2.4.6, plotly 7.1.0, ccxt 4.5.90, python-dateutil 3.0.0, requests 2.34.2, statsmodels 0.15.0). Dev/test: `requirements-dev.txt`.
+## Documentation
+
+`docs/SPEC.md` (what the product does, reverse-engineered, pending owner approval), `docs/ARCHITECTURE.md`, `docs/QA.md`, `docs/REVIEW.md`, `CHANGELOG.md`.
 
 ## License
 
-This project is open source and available for personal use.
-
-## Notes
-
-- The application automatically calculates funding amounts based on your actual portfolio positions
-- Pool amounts are automatically calculated based on sales (USDT from sales goes into pools)
-- All income calculations are done monthly based on average positions/balances
-- Price data requires internet connection to fetch from Binance API
+No license file; personal use.
