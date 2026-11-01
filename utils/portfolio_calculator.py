@@ -161,9 +161,7 @@ def calculate_portfolio_history(start_date: str = "2022-01-01", end_date: str = 
                     portfolio[asset] = 0.0
                 if tx_type == 'buy':
                     if asset == 'USDT':
-                        if pool_balance_total > 0:
-                            reduce_amount = min(value, pool_balance_total)
-                            pool_balance_total -= reduce_amount
+                        # A USDT buy is an external deposit: it must not touch the pool (R-02).
                         portfolio[asset] += quantity
                     else:
                         use_from_pool = min(value, pool_balance_total)

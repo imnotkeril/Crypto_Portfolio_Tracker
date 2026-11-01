@@ -37,3 +37,13 @@ def test_pool_income_added_after_month_end(db, calc, const_price):
     db.add_pool_rate(2024, 1, 12.0)
     h = calc.calculate_portfolio_history("2024-01-01", "2024-02-10")
     assert h["total_value"].iloc[-1] > 1200.0
+
+
+def test_usdt_deposit_does_not_erase_pool_balance(db, calc, const_price):
+    # R-02: 1000 USDT, BTC round trip @100 (proceeds sit in the pool), then +500 deposit.
+    db.add_transaction("2024-01-01", "USDT", "buy", 1000, 1, 1000)
+    db.add_transaction("2024-01-02", "BTC", "buy", 1, 100, 100)
+    db.add_transaction("2024-01-03", "BTC", "sell", 1, 100, 100)
+    db.add_transaction("2024-01-04", "USDT", "buy", 500, 1, 500)
+    h = calc.calculate_portfolio_history("2024-01-01", "2024-01-10")
+    assert h["total_value"].iloc[-1] == pytest.approx(1500.0)
