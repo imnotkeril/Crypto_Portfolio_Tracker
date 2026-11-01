@@ -141,7 +141,7 @@ Characterization rule: where the SPEC documents a known defect (D1, D4, D5, D9),
   uses: stack:python, stack:uv, stack:pytest, rule:python
   check: `python -m pip check && python -c "import streamlit, pandas, ccxt" && python -m pytest -q`
   done: `.venv` created from `requirements-dev.txt` (T18 adds pinned `mypy` and `pandas-stubs` there; needed by T30) (or `uv` if the owner picks ADR-002 option 3); conftest gains a no-network guard and a price-mock fixture shared by T19-T27; 21 still pass.
-- [ ] T19 [P g1] Tier A: ledger stored rows, holdings inconsistency, migration edge cases
+- [x] T19 [P g1] Tier A: ledger stored rows, holdings inconsistency, migration edge cases
   layer: qa · tier: A · owner: qa-tester · model: sonnet
   owns: tests/test_database.py
   depends: T18
