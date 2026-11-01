@@ -169,8 +169,8 @@ Acceptance:
 ### F15 Disclaimer (P2, gap: not implemented today)
 Behaviour: the finance family requires the disclaimer line (top of this document) in the README and on the first screen or footer of the UI. `grep -ri "not investment advice"` over the project finds 0 matches, so this requirement is currently unmet. Implementing it touches `README.md` and `main.py`/pages and is outside this step.
 Acceptance:
-- [ ] AC15.1 Given the repository When `grep -ril "not investment advice" README.md main.py pages` is run Then it lists README.md and main.py (currently prints nothing, so this AC fails today).
-- [ ] AC15.2 Given the Backtest page with synthetic data When the results render Then the disclaimer text is visible on the page (page step; currently fails).
+- [x] AC15.1 Given the repository When `grep -il "not investment advice" README.md utils/disclaimer.py` is run Then both are listed and `main.py` and `pages/backtest.py` import and render `DISCLAIMER` (`tests/test_disclaimer.py`, commit dc627dd).
+- [~] AC15.2 Given the Backtest page with synthetic data When the results render Then the disclaimer text is visible on the page (code path covered by `tests/test_disclaimer.py`; visual page step done in QA).
 
 ## 5. Data
 Entities (SQLite `data/portfolio.db`, JSON caches in `data/cache/`):
