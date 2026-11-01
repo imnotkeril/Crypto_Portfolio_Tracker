@@ -29,13 +29,9 @@ share/python-wheels/
 MANIFEST
 
 # Database
-data/*.db
-data/*.db-journal
-data/*.db-shm
-data/*.db-wal
+data/
 
 # Cache
-data/cache/
 *.json
 
 # IDE
