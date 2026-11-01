@@ -26,6 +26,8 @@ Branch: `chore/audit` (local only; nothing pushed).
 - [x] qa/T19 ledger rows, schema/idempotent init, D4 + D11 characterized, migration AC12.4/12.5 — tests/test_database.py 21 passed, 0 failed
 - [x] qa/T21 metrics edge cases, D1 pinned, R-01/R-09/R-10 characterized — tests/test_metrics.py 25 passed, 0 failed
 
+- [x] qa/verdict YELLOW - 76 passed 0 failed 0 skipped; compileall ok; mypy 8 (info); AppTest 7 pages 0 exceptions, real-browser pass NOT done; 25/76 ACs uncovered; R-01 open (docs/QA.md)
+
 ## Next
 - [ ] architecture — architect/opus: docs/ARCHITECTURE.md + docs/adr/
 - [ ] plan — architect: docs/plan.md with tiers, owns, checks; ticks for done work
