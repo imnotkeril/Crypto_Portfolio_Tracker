@@ -41,6 +41,11 @@ def _save_assets_cache(assets: List[str]):
         pass
 
 
+def _with_usdt(assets: List[str]) -> List[str]:
+    """USDT itself is always selectable (deposits), listed first (R-05)."""
+    return ['USDT'] + [a for a in assets if a != 'USDT']
+
+
 def get_available_assets(use_cache: bool = True) -> List[str]:
     """
     Get list of assets available as USDT pairs on Binance.
@@ -54,7 +59,7 @@ def get_available_assets(use_cache: bool = True) -> List[str]:
             assets = data.get('assets', [])
             cached_at = data.get('cached_at', 0)
             if assets and (time.time() - cached_at) < CACHE_MAX_AGE_SECONDS:
-                return assets
+                return _with_usdt(assets)
         except Exception:
             pass
 
@@ -75,11 +80,11 @@ def get_available_assets(use_cache: bool = True) -> List[str]:
             with open(ASSETS_CACHE_FILE, 'w', encoding='utf-8') as f:
                 json.dump(
                     {'assets': assets, 'cached_at': time.time()}, f, indent=2)
-            return assets
+            return _with_usdt(assets)
     except Exception:
         pass
 
-    return list(DEFAULT_USDT_ASSETS)
+    return _with_usdt(DEFAULT_USDT_ASSETS)
 
 
 def get_assets_for_funding() -> List[str]:
