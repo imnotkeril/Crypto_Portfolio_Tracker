@@ -198,7 +198,10 @@ def calculate_max_drawdown(portfolio_values: pd.Series) -> Tuple[float, str, str
     
     # Calculate drawdown
     drawdown = (portfolio_values - running_max) / running_max * 100
-    
+
+    if drawdown.dropna().empty:
+        return (0.0, "", "")
+
     # Find maximum drawdown
     max_dd = drawdown.min()
     trough_idx = drawdown.idxmin()

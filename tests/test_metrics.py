@@ -58,3 +58,10 @@ def test_all_metrics_keys_and_values():
         assert k in m and np.isfinite(m[k])
     assert m["total_return"] == pytest.approx(30)  # initial = first non-zero (100)
     assert m["max_drawdown"] == pytest.approx((121 - 90) / 121 * 100)
+
+
+def test_max_drawdown_all_zero_series_does_not_raise():
+    # R-08: running max 0 -> drawdown all NaN used to raise in idxmin
+    from utils.metrics import calculate_max_drawdown
+    s = pd.Series([0.0, 0.0, 0.0], index=["2024-01-01", "2024-01-02", "2024-01-03"])
+    assert calculate_max_drawdown(s) == (0.0, "", "")
