@@ -155,7 +155,7 @@ Characterization rule: where the SPEC documents a known defect (D1, D4, D5, D9),
   uses: skill:test-driven-development, stack:pytest, rule:tests
   check: `python -m pytest -q tests/test_portfolio_calculator.py`
   done: AC7.1 (empty frame and columns), AC7.4 (funding income 1.0), AC7.5 (pool 500 -> 200), AC7.6 (missing price excluded, D9), AC7.7 (pre-2022 transaction ignored, D2); characterization of D5: last-month income in columns, not in `total_value`.
-- [ ] T21 [P g1] Metrics edge cases and annualization characterization
+- [x] T21 [P g1] Metrics edge cases and annualization characterization
   layer: qa · tier: B · owner: qa-tester · model: sonnet
   owns: tests/test_metrics.py
   depends: T18

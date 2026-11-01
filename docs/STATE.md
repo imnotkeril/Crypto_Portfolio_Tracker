@@ -22,6 +22,7 @@ Branch: `chore/audit` (local only; nothing pushed).
 
 - [x] audit/architecture - OK, 0 findings (3 notes) [shadow]; auditor = sonnet FALLBACK (fable out of credits, weaker than author opus)
 - [x] audit/plan - FIX, 3 findings (2 valid, 1 invalid) [shadow]; plan fixed (T18/T30 owns, mypy count); auditor = sonnet fallback
+- [x] qa/T21 metrics edge cases, D1 pinned, R-01/R-09/R-10 characterized — tests/test_metrics.py 25 passed, 0 failed
 
 ## Next
 - [ ] architecture — architect/opus: docs/ARCHITECTURE.md + docs/adr/
