@@ -1,22 +1,22 @@
 """
 Analytics page - portfolio metrics and charts
 """
+import json
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-from datetime import datetime
 import sys
 import os
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.database import init_database, get_transactions
-from utils.portfolio_calculator import calculate_portfolio_history, get_transactions_with_prices
+from utils.portfolio_calculator import calculate_portfolio_history
 from utils.metrics import calculate_all_metrics
-from utils.price_fetcher import get_price_range, get_current_price
+from utils.price_fetcher import get_price_range
 
 
 st.set_page_config(page_title="Analytics", page_icon="📈", layout="wide")
@@ -277,10 +277,13 @@ st.plotly_chart(fig_portfolio, use_container_width=True)
 
 # Asset price chart with buy/sell markers
 st.write("**Asset Chart with Entry/Exit Points**")
-asset_selection = st.selectbox("Select Asset", ["BTC", "ETH"])
+transactions = get_transactions()
+assets_with_txs = sorted(transactions['asset'].unique()) if len(transactions) > 0 else []
+# Only crypto assets (exclude USDT for price chart)
+chart_assets = [a for a in assets_with_txs if a != 'USDT']
+asset_selection = st.selectbox("Select Asset", chart_assets if chart_assets else ["BTC", "ETH"])
 
 if asset_selection:
-    transactions = get_transactions()
     asset_transactions = transactions[transactions['asset'] == asset_selection]
     
     if len(asset_transactions) > 0:
@@ -354,35 +357,49 @@ fig_composition = go.Figure()
 
 if len(portfolio_history) > 0:
     latest = portfolio_history.iloc[-1]
-    
-    fig_composition.add_trace(go.Bar(
-        x=['BTC', 'ETH', 'USDT'],
-        y=[latest['BTC_value'], latest['ETH_value'], latest['USDT_value']],
-        name='Стоимость',
-        marker_color=['#f7931a', '#627eea', '#26a17b']
-    ))
-    
-    fig_composition.update_layout(
-        title='Current Portfolio Composition',
-        xaxis_title='Asset',
-        yaxis_title='Value (USDT)',
-        height=400
-    )
-    
-    st.plotly_chart(fig_composition, use_container_width=True)
-    
-    # Pie chart
-    fig_pie = go.Figure(data=[go.Pie(
-        labels=['BTC', 'ETH', 'USDT'],
-        values=[latest['BTC_value'], latest['ETH_value'], latest['USDT_value']],
-        hole=0.3,
-        marker_colors=['#f7931a', '#627eea', '#26a17b']
-    )])
-    fig_pie.update_layout(
-        title='Portfolio Distribution',
-        height=400
-    )
-    st.plotly_chart(fig_pie, use_container_width=True)
+    if 'assets_value' in portfolio_history.columns:
+        try:
+            av = json.loads(latest['assets_value']) if isinstance(latest['assets_value'], str) else latest['assets_value']
+        except Exception:
+            av = {
+                'BTC': latest.get('BTC_value', 0),
+                'ETH': latest.get('ETH_value', 0),
+                'USDT': latest.get('USDT_value', 0),
+            }
+    else:
+        av = {
+            'BTC': latest.get('BTC_value', 0),
+            'ETH': latest.get('ETH_value', 0),
+            'USDT': latest.get('USDT_value', 0),
+        }
+    av = {k: v for k, v in av.items() if v and float(v) > 0}
+    if av:
+        assets = list(av.keys())
+        values = [float(av[a]) for a in assets]
+        colors = ['#f7931a', '#627eea', '#26a17b', '#f0b90b', '#00d4aa', '#5ac8fa', '#ff6b6b'][:len(assets)]
+        fig_composition.add_trace(go.Bar(
+            x=assets,
+            y=values,
+            name='Value',
+            marker_color=colors[:len(assets)]
+        ))
+        fig_composition.update_layout(
+            title='Current Portfolio Composition',
+            xaxis_title='Asset',
+            yaxis_title='Value (USDT)',
+            height=400
+        )
+        st.plotly_chart(fig_composition, use_container_width=True)
+        fig_pie = go.Figure(data=[go.Pie(
+            labels=assets,
+            values=values,
+            hole=0.3,
+            marker_colors=colors[:len(assets)]
+        )])
+        fig_pie.update_layout(title='Portfolio Distribution', height=400)
+        st.plotly_chart(fig_pie, use_container_width=True)
+    else:
+        st.info("No portfolio value data for composition.")
 
 # Funding and Pool Income Section - moved to bottom
 st.markdown("---")

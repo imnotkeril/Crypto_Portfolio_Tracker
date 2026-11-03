@@ -29,13 +29,9 @@ share/python-wheels/
 MANIFEST
 
 # Database
-data/*.db
-data/*.db-journal
-data/*.db-shm
-data/*.db-wal
+data/
 
 # Cache
-data/cache/
 *.json
 
 # IDE
@@ -58,8 +54,8 @@ ehthumbs.db
 Thumbs.db
 Desktop.ini
 
-# Streamlit
-.streamlit/
+# Streamlit (config.toml is tracked; secrets are not)
+.streamlit/secrets.toml
 
 # Logs
 *.log
@@ -82,3 +78,6 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Local virtualenv
+.venv/

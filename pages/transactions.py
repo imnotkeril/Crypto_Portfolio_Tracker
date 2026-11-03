@@ -11,6 +11,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.database import init_database, add_transaction, get_transactions, delete_transaction, get_current_portfolio
 from utils.price_fetcher import get_price, get_current_price, find_dates_by_price
+from utils.assets import get_available_assets
 
 
 st.set_page_config(page_title="Transactions", page_icon="📊", layout="wide")
@@ -40,17 +41,19 @@ with st.expander("➕ Add Transaction", expanded=len(transactions_df) == 0):
     selected_date_str = None
     transaction_date = None
     
+    available_assets = get_available_assets()
     if date_input_mode == "By Date":
         with col1:
             transaction_date = st.date_input("Transaction Date", value=date.today(), key="tx_date")
         selected_date_str = transaction_date.strftime('%Y-%m-%d')
         with col2:
-            asset = st.selectbox("Asset", ["BTC", "ETH", "USDT"], key="tx_asset")
+            asset = st.selectbox("Asset", available_assets, key="tx_asset")
         with col3:
             transaction_type = st.selectbox("Type", ["buy", "sell"], key="tx_type")
     else:  # By Target Price
+        crypto_only = [a for a in available_assets if a != "USDT"]
         with col2:
-            asset = st.selectbox("Asset", ["BTC", "ETH"], key="tx_asset")
+            asset = st.selectbox("Asset", crypto_only if crypto_only else available_assets, key="tx_asset")
         with col3:
             transaction_type = st.selectbox("Type", ["buy", "sell"], key="tx_type")
         
@@ -360,32 +363,27 @@ with st.expander("➕ Add Transaction", expanded=len(transactions_df) == 0):
             
         except Exception as e:
             st.error(f"Error adding transaction: {e}")
-            import traceback
             st.exception(e)
 
 # Display current portfolio
 st.subheader("Current Portfolio")
 portfolio = get_current_portfolio()
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("BTC", f"{portfolio['BTC']:.3f}")
-with col2:
-    st.metric("ETH", f"{portfolio['ETH']:.3f}")
-with col3:
-    st.metric("USDT", f"{portfolio['USDT']:.2f}")
+cols = st.columns(min(4, len(portfolio)) or 1)
+for i, (asset, qty) in enumerate(sorted(portfolio.items(), key=lambda x: (0 if x[0] == 'USDT' else 1, x[0]))):
+    with cols[i % 4]:
+        if asset == 'USDT':
+            st.metric(asset, f"{qty:,.2f}")
+        else:
+            st.metric(asset, f"{qty:.4f}")
 
-# Get current prices and calculate portfolio value
 if len(transactions_df) > 0:
-    current_btc_price = get_current_price("BTC/USDT")
-    current_eth_price = get_current_price("ETH/USDT")
-    
-    portfolio_value = (
-        portfolio['BTC'] * (current_btc_price or 0) +
-        portfolio['ETH'] * (current_eth_price or 0) +
-        portfolio['USDT']
-    )
-    
+    portfolio_value = portfolio.get('USDT', 0.0)
+    for asset in portfolio:
+        if asset != 'USDT':
+            p = get_current_price(f"{asset}/USDT")
+            if p:
+                portfolio_value += portfolio[asset] * p
     st.metric("Portfolio Value", f"{portfolio_value:,.2f} USDT")
 
 # Display transactions
@@ -422,9 +420,9 @@ if len(transactions_df) > 0:
     
     # Summary by asset
     st.subheader("Summary by Asset")
-    
+    assets_in_txs = sorted(transactions_df['asset'].unique())
     summary_data = []
-    for asset in ['BTC', 'ETH', 'USDT']:
+    for asset in assets_in_txs:
         asset_txs = transactions_df[transactions_df['asset'] == asset]
         if len(asset_txs) > 0:
             buy_txs = asset_txs[asset_txs['type'] == 'buy']
